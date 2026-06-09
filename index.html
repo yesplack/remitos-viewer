@@ -698,32 +698,33 @@ function parseRemito(rawText, filename) {
 
   const d={numero:null,fecha:null,cliente:null,direccion:null,telefono:null,vendedor:null,productos:[],origen_tipo:null,origen_numero:null,texto_completo:rawText};
 
-  // ── NUMERO ── (highest priority patterns first)
-  // Pattern: explicit XXXX-XXXXXXXX in text
-  const pats=[
-    /\b(\d{4}[-–]\d{8})\b/,
-    /\b(\d{4}[-–]\d{7})\b/,
-    /OCR\s*(\d{4})\s*(\d{7,8})/i,
-    /\b(0{3,4}\d{1,4}[-–]\d{6,8})\b/,
-  ];
-  for(const p of pats){
-    const m=t.match(p);
-    if(m){
-      d.numero = m[2] ? m[1]+'-'+m[2] : m[1];
-      d.numero = d.numero.replace('–','-');
-      dbg('ok',`Number found [${p}]`,d.numero);
-      break;
-    }
+  // ── NUMERO ── OCR footer is the PRIMARY and most reliable source
+  // Format at bottom of remito: "OCR0020019220 S 1"
+  // 10 raw digits → pad to 12 → split 4+8 → "0000-20019220"
+  const ocrFooter = t.match(/OCR(\d{10,12})\s+S\s+\d/i);
+  if(ocrFooter){
+    const raw = ocrFooter[1];
+    const full = raw.padStart(12,'0');
+    d.numero = full.slice(0,4) + '-' + full.slice(4);
+    dbg('ok','Number from OCR footer (primary)',`raw=${raw} → ${d.numero}`);
   }
-  // Fallback: OCR footer line "OCR0020019220 S 1" → 0020019220 → 0002-0019220? No → 0000-20019220
+
+  // Fallback: try to read the number from top-right header area
   if(!d.numero){
-    const ocr=t.match(/OCR(\d{10,12})/i);
-    if(ocr){
-      const n=ocr[1];
-      d.numero=n.slice(0,4)+'-'+n.slice(4);
-      dbg('ok','Number from OCR footer',d.numero);
+    const pats=[
+      /\b(\d{4}[-–]\d{8})\b/,
+      /\b(\d{4}[-–]\d{7})\b/,
+    ];
+    for(const p of pats){
+      const m=t.match(p);
+      if(m){
+        d.numero = m[1].replace('–','-');
+        dbg('ok',`Number from header fallback [${p}]`,d.numero);
+        break;
+      }
     }
   }
+
   if(!d.numero) dbg('warn','No number found',t.slice(0,400));
 
   // ── FECHA ──
