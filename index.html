@@ -177,8 +177,12 @@ body{font-family:'Inter','Segoe UI',sans-serif;background:var(--bg);color:var(--
 .i-ocr{font-size:10px;color:var(--or);flex-shrink:0}
 .man-in{background:var(--sf3);border:1px solid var(--bd);border-radius:6px;padding:4px 8px;font-size:11px;color:var(--tx);width:130px;outline:none;font-family:inherit}
 .man-in:focus{border-color:var(--ac)}
-.imp-progress{width:100%;height:3px;background:var(--sf3);border-radius:2px;margin-top:8px;overflow:hidden}
-.imp-progress-bar{height:100%;background:var(--ac);border-radius:2px;transition:width .3s ease;width:0}
+.imp-progress{width:100%;height:4px;background:var(--sf3);border-radius:2px;margin-top:8px;overflow:hidden}
+.imp-progress-bar{height:100%;background:var(--ac);border-radius:2px;transition:width .3s ease,background .3s ease;width:0}
+.file-prog-wrap{width:100%}
+.file-prog-track{position:relative;height:20px;background:var(--sf3);border-radius:6px;overflow:hidden}
+.file-prog-bar{position:absolute;left:0;top:0;height:100%;background:var(--ac);border-radius:6px;transition:width .4s ease,background .3s ease;min-width:4px}
+.file-prog-label{position:absolute;inset:0;display:flex;align-items:center;padding:0 8px;font-size:10px;font-weight:600;color:rgba(255,255,255,.9);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;mix-blend-mode:normal;z-index:1}
 
 /* PDF VIEWER */
 .pdf-ov{position:fixed;inset:0;background:rgba(0,0,0,.93);backdrop-filter:blur(14px);z-index:300;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity var(--t)}
@@ -913,10 +917,19 @@ function handleFiles(files){
   const list=document.getElementById('imp-list');
   list.innerHTML='';
   pendFiles.forEach((f,i)=>{
-    list.innerHTML+=`<div class="imp-item" id="ii-${i}">
-      <div class="ist s-p" id="is-${i}">○</div>
-      <div class="i-nm" title="${f.name}">${f.name}</div>
-      <div class="i-inf" id="if-${i}">${(f.size/1024).toFixed(0)}KB</div>
+    list.innerHTML+=`
+    <div class="imp-item" id="ii-${i}" style="flex-direction:column;align-items:stretch;gap:6px;padding:10px 14px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="ist s-p" id="is-${i}">○</div>
+        <div class="i-nm" title="${f.name}">${f.name}</div>
+        <div class="i-inf" id="if-${i}">${(f.size/1024).toFixed(0)}KB</div>
+      </div>
+      <div class="file-prog-wrap" id="fp-wrap-${i}" style="display:none">
+        <div class="file-prog-track">
+          <div class="file-prog-bar" id="fp-bar-${i}" style="width:0%"></div>
+          <div class="file-prog-label" id="fp-lbl-${i}">Esperando…</div>
+        </div>
+      </div>
     </div>`;
   });
   let sum=`${pendFiles.length} archivo${pendFiles.length!==1?'s':''} listo${pendFiles.length!==1?'s':''}`;
@@ -925,58 +938,109 @@ function handleFiles(files){
   document.getElementById('btn-start-imp').disabled=pendFiles.length===0;
 }
 
+// Per-file progress helpers
+function showFileBar(i){document.getElementById('fp-wrap-'+i).style.display='block';}
+function setFileBar(i,pct,lbl){
+  const bar=document.getElementById('fp-bar-'+i);
+  const label=document.getElementById('fp-lbl-'+i);
+  if(bar)bar.style.width=pct+'%';
+  if(label)label.textContent=lbl;
+  // Color by stage
+  if(bar){
+    if(pct===100)bar.style.background='var(--gr2)';
+    else if(lbl.includes('Error'))bar.style.background='var(--re2)';
+    else if(lbl.includes('Duplicado'))bar.style.background='var(--or)';
+    else bar.style.background='var(--ac)';
+  }
+}
+
 async function startImport(){
   const btn=document.getElementById('btn-start-imp');
-  btn.disabled=true;btn.textContent='⏳ Procesando…';
-  const prog=document.getElementById('imp-prog-wrap');
-  const bar=document.getElementById('imp-prog-bar');
-  prog.style.display='block';
+  btn.disabled=true; btn.textContent='⏳ Procesando…';
+  const globalBar=document.getElementById('imp-prog-bar');
+  document.getElementById('imp-prog-wrap').style.display='block';
   let ok=0,dupes=0,errs=0,manual=0;
 
   for(let i=0;i<pendFiles.length;i++){
     const f=pendFiles[i];
+    // Global progress
+    globalBar.style.width=Math.round((i/pendFiles.length)*100)+'%';
+    document.getElementById('imp-sum').textContent=
+      `Procesando ${i+1} de ${pendFiles.length} · ✓ ${ok} · ✕ ${errs}`;
+
     setIS(i,'s-pr','⟳');
-    setIF(i,'Leyendo…');
-    bar.style.width=Math.round((i/pendFiles.length)*100)+'%';
+    showFileBar(i);
+    setFileBar(i,5,'Leyendo PDF…');
     dbg('info',`[${i+1}/${pendFiles.length}] ${f.name}`);
+
     try{
+      // Stage 1: OCR / embedded text
+      setFileBar(i,15,'Extrayendo texto…');
       const {text,method}=await pdfToText(f);
+      setFileBar(i,35,method==='ocr'?'OCR completado ✓':'Texto embebido ✓');
       setIF(i,method==='ocr'?'OCR':'Texto');
+
+      // Stage 2: parse
+      setFileBar(i,45,'Analizando datos…');
       const parsed=parseRemito(text,f.name);
 
       if(!parsed.numero){
         setIS(i,'s-mn','✎');
-        const el=document.getElementById('ii-'+i);
-        const infEl=document.getElementById('if-'+i);
-        infEl.innerHTML=`<input class="man-in" id="mi-${i}" placeholder="XXXX-XXXXXXXX" maxlength="14">`;
-        dbg('warn',`No number — manual required for ${f.name}`);
+        setFileBar(i,45,'Número no detectado — ingresalo');
+        document.getElementById('if-'+i).innerHTML=
+          `<input class="man-in" id="mi-${i}" placeholder="XXXX-XXXXXXXX" maxlength="14">`;
+        dbg('warn',`Manual input needed: ${f.name}`);
         manual++;continue;
       }
 
+      // Stage 3: duplicate check
+      setFileBar(i,55,'Verificando duplicado…');
       const ex=await sb(`remitos?numero=eq.${parsed.numero}&select=id`);
-      if(ex?.length){setIS(i,'s-du','≈');setIF(i,'Duplicado');dbg('warn','Duplicate',parsed.numero);dupes++;continue;}
+      if(ex?.length){
+        setIS(i,'s-du','≈');
+        setFileBar(i,100,'Ya existe en la base de datos');
+        setIF(i,parsed.numero);
+        dbg('warn','Duplicate',parsed.numero);
+        dupes++;continue;
+      }
 
-      setIF(i,'Subiendo…');
+      // Stage 4: upload
+      setFileBar(i,65,'Subiendo PDF a storage…');
       const url=await sbUp(f.name,f);
+
+      // Stage 5: save to DB
+      setFileBar(i,85,'Guardando metadatos…');
       await sb('remitos',{method:'POST',body:JSON.stringify({
         numero:parsed.numero,fecha:parsed.fecha,cliente:parsed.cliente,
         direccion:parsed.direccion,telefono:parsed.telefono,vendedor:parsed.vendedor,
         productos:parsed.productos,texto_completo:text.substring(0,5000),
         pdf_url:url,pdf_nombre:f.name
       })});
-      setIS(i,'s-ok','✓');setIF(i,parsed.numero);
-      dbg('ok','Imported',parsed.numero);ok++;
+
+      setIS(i,'s-ok','✓');
+      setFileBar(i,100,`${parsed.numero} — importado ✓`);
+      setIF(i,parsed.numero);
+      dbg('ok','Imported',parsed.numero);
+      ok++;
+
     }catch(e){
-      setIS(i,'s-er','✕');setIF(i,'Error');
-      dbg('err',`Import failed: ${f.name}`,e.message);errs++;
+      setIS(i,'s-er','✕');
+      setFileBar(i,100,'Error: '+e.message.slice(0,50));
+      setIF(i,'Error');
+      dbg('err',`Import failed: ${f.name}`,e.message);
+      errs++;
     }
   }
-  bar.style.width='100%';
+
+  globalBar.style.width='100%';
+  globalBar.style.background=errs>0&&ok===0?'var(--re2)':errs>0?'var(--or)':'var(--gr2)';
 
   if(manual>0){
-    btn.disabled=false;btn.textContent='✎ Confirmar manuales';
+    btn.disabled=false;
+    btn.textContent=`✎ Confirmar ${manual} manual${manual!==1?'es':''}`;
     btn.onclick=()=>processManual(ok,dupes,errs);
-    document.getElementById('imp-sum').textContent=`${ok} importados · ${dupes} duplicados · ${errs} errores · ${manual} requieren número manual`;
+    document.getElementById('imp-sum').textContent=
+      `${ok} importados · ${dupes} duplicados · ${errs} errores · ${manual} requieren número`;
   } else {
     finishImport(ok,dupes,errs);
   }
