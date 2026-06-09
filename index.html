@@ -6,1265 +6,949 @@
 <title>Remitos — Panel de Consulta</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Segoe+UI:wght@300;400;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
-
-  :root {
-    --bg: #0e0e10;
-    --surface: #1a1a1f;
-    --surface2: #22222a;
-    --surface3: #2a2a35;
-    --accent: #0078d4;
-    --accent2: #106ebe;
-    --accent-glow: rgba(0, 120, 212, 0.3);
-    --accent-green: #107c10;
-    --green-glow: rgba(16, 124, 16, 0.3);
-    --text: #ffffff;
-    --text2: #a0a0b0;
-    --text3: #606070;
-    --border: rgba(255,255,255,0.06);
-    --radius: 12px;
-    --radius-lg: 18px;
-    --transition: 0.22s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-
-  html { scroll-behavior: smooth; }
-
-  body {
-    font-family: 'Inter', 'Segoe UI', sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
-
-  /* SCROLLBAR */
-  ::-webkit-scrollbar { width: 6px; }
-  ::-webkit-scrollbar-track { background: var(--bg); }
-  ::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 3px; }
-  ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
-
-  /* HEADER */
-  .header {
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    background: rgba(14,14,16,0.92);
-    backdrop-filter: blur(20px);
-    border-bottom: 1px solid var(--border);
-    padding: 0 40px;
-    height: 64px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  .header-logo {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-
-  .logo-icon {
-    width: 36px;
-    height: 36px;
-    background: var(--accent);
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 18px;
-    box-shadow: 0 0 20px var(--accent-glow);
-  }
-
-  .logo-text {
-    font-size: 18px;
-    font-weight: 700;
-    letter-spacing: -0.3px;
-  }
-
-  .logo-sub {
-    font-size: 11px;
-    color: var(--text2);
-    font-weight: 400;
-    margin-top: 1px;
-  }
-
-  .header-stats {
-    display: flex;
-    gap: 24px;
-    align-items: center;
-  }
-
-  .stat-pill {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    padding: 6px 14px;
-    font-size: 13px;
-    color: var(--text2);
-    transition: var(--transition);
-  }
-
-  .stat-pill .num {
-    font-weight: 700;
-    color: var(--text);
-    font-size: 14px;
-  }
-
-  /* MAIN LAYOUT */
-  .main {
-    padding: 32px 40px;
-    max-width: 1600px;
-    margin: 0 auto;
-  }
-
-  /* HERO SEARCH */
-  .hero {
-    margin-bottom: 32px;
-  }
-
-  .hero-title {
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--text3);
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
-    margin-bottom: 16px;
-  }
-
-  .search-bar {
-    position: relative;
-    display: flex;
-    gap: 12px;
-    align-items: center;
-  }
-
-  .search-input-wrap {
-    flex: 1;
-    position: relative;
-  }
-
-  .search-icon {
-    position: absolute;
-    left: 18px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: var(--text3);
-    font-size: 18px;
-    pointer-events: none;
-    transition: var(--transition);
-  }
-
-  .search-input {
-    width: 100%;
-    background: var(--surface);
-    border: 1.5px solid var(--border);
-    border-radius: var(--radius-lg);
-    padding: 16px 20px 16px 52px;
-    font-size: 16px;
-    color: var(--text);
-    outline: none;
-    transition: var(--transition);
-    font-family: inherit;
-  }
-
-  .search-input::placeholder { color: var(--text3); }
-
-  .search-input:focus {
-    border-color: var(--accent);
-    background: var(--surface2);
-    box-shadow: 0 0 0 3px var(--accent-glow);
-  }
-
-  .search-input:focus + .search-icon,
-  .search-input-wrap:focus-within .search-icon {
-    color: var(--accent);
-  }
-
-  .search-clear {
-    position: absolute;
-    right: 16px;
-    top: 50%;
-    transform: translateY(-50%);
-    background: var(--surface3);
-    border: none;
-    color: var(--text2);
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    cursor: pointer;
-    font-size: 16px;
-    display: none;
-    align-items: center;
-    justify-content: center;
-    transition: var(--transition);
-  }
-
-  .search-clear:hover { background: var(--accent); color: white; }
-  .search-clear.visible { display: flex; }
-
-  .btn-import {
-    background: var(--accent);
-    color: white;
-    border: none;
-    border-radius: var(--radius);
-    padding: 0 24px;
-    height: 54px;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    white-space: nowrap;
-    transition: var(--transition);
-    box-shadow: 0 4px 20px var(--accent-glow);
-    font-family: inherit;
-  }
-
-  .btn-import:hover {
-    background: var(--accent2);
-    transform: translateY(-1px);
-    box-shadow: 0 8px 30px var(--accent-glow);
-  }
-
-  .btn-import:active { transform: translateY(0); }
-
-  /* FILTER CHIPS */
-  .filters {
-    display: flex;
-    gap: 8px;
-    margin-top: 14px;
-    flex-wrap: wrap;
-    align-items: center;
-  }
-
-  .filter-label {
-    font-size: 12px;
-    color: var(--text3);
-    margin-right: 4px;
-  }
-
-  .chip {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    padding: 5px 14px;
-    font-size: 12px;
-    color: var(--text2);
-    cursor: pointer;
-    transition: var(--transition);
-    user-select: none;
-    font-family: inherit;
-  }
-
-  .chip:hover { border-color: var(--accent); color: var(--text); }
-  .chip.active { background: var(--accent); border-color: var(--accent); color: white; }
-
-  /* RESULTS AREA */
-  .results-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 20px;
-  }
-
-  .results-count {
-    font-size: 13px;
-    color: var(--text3);
-  }
-
-  .results-count strong {
-    color: var(--text);
-    font-size: 15px;
-  }
-
-  .view-toggle {
-    display: flex;
-    gap: 4px;
-    background: var(--surface2);
-    border-radius: 8px;
-    padding: 4px;
-  }
-
-  .view-btn {
-    background: none;
-    border: none;
-    color: var(--text3);
-    width: 32px;
-    height: 32px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 16px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: var(--transition);
-  }
-
-  .view-btn.active { background: var(--surface3); color: var(--text); }
-  .view-btn:hover { color: var(--text); }
-
-  /* CARDS GRID */
-  .cards-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 16px;
-  }
-
-  .cards-grid.list-view {
-    grid-template-columns: 1fr;
-  }
-
-  /* CARD */
-  .card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    overflow: hidden;
-    cursor: pointer;
-    transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
-    position: relative;
-    animation: cardIn 0.3s ease both;
-  }
-
-  @keyframes cardIn {
-    from { opacity: 0; transform: translateY(12px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-
-  .card:hover {
-    transform: translateY(-3px) scale(1.01);
-    box-shadow: 0 12px 40px rgba(0,0,0,0.5), 0 0 0 1px var(--accent);
-    border-color: var(--accent);
-    z-index: 2;
-  }
-
-  .card:hover .card-accent-bar {
-    opacity: 1;
-    transform: scaleX(1);
-  }
-
-  .card-accent-bar {
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 2px;
-    background: linear-gradient(90deg, var(--accent), #50a0ff);
-    opacity: 0;
-    transform: scaleX(0.3);
-    transform-origin: left;
-    transition: var(--transition);
-  }
-
-  .card-header {
-    padding: 18px 20px 12px;
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 12px;
-  }
-
-  .card-numero {
-    font-size: 20px;
-    font-weight: 700;
-    letter-spacing: -0.5px;
-    color: var(--text);
-    font-variant-numeric: tabular-nums;
-  }
-
-  .card-tipo {
-    font-size: 10px;
-    font-weight: 600;
-    padding: 3px 8px;
-    border-radius: 4px;
-    text-transform: uppercase;
-    letter-spacing: 0.8px;
-    flex-shrink: 0;
-    margin-top: 3px;
-  }
-
-  .tipo-oficial {
-    background: rgba(0, 120, 212, 0.2);
-    color: #60b0ff;
-    border: 1px solid rgba(0, 120, 212, 0.3);
-  }
-
-  .tipo-proforma {
-    background: rgba(255, 140, 0, 0.15);
-    color: #ffaa44;
-    border: 1px solid rgba(255, 140, 0, 0.25);
-  }
-
-  .card-body {
-    padding: 0 20px 16px;
-  }
-
-  .card-cliente {
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--text);
-    margin-bottom: 4px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .card-direccion {
-    font-size: 12px;
-    color: var(--text2);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    margin-bottom: 12px;
-  }
-
-  .card-meta {
-    display: flex;
-    gap: 16px;
-    flex-wrap: wrap;
-  }
-
-  .meta-item {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-
-  .meta-label {
-    font-size: 10px;
-    color: var(--text3);
-    text-transform: uppercase;
-    letter-spacing: 0.8px;
-    font-weight: 500;
-  }
-
-  .meta-value {
-    font-size: 12px;
-    color: var(--text2);
-    font-weight: 500;
-  }
-
-  .card-divider {
-    height: 1px;
-    background: var(--border);
-    margin: 0 20px 12px;
-  }
-
-  .card-productos {
-    padding: 0 20px 16px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-  }
-
-  .producto-tag {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 3px 8px;
-    font-size: 11px;
-    color: var(--text2);
-    max-width: 180px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .card-footer {
-    padding: 10px 20px;
-    background: var(--surface2);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    border-top: 1px solid var(--border);
-  }
-
-  .card-fecha {
-    font-size: 12px;
-    color: var(--text3);
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .btn-ver {
-    background: var(--surface3);
-    border: 1px solid var(--border);
-    color: var(--text2);
-    border-radius: 8px;
-    padding: 6px 14px;
-    font-size: 12px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    transition: var(--transition);
-    font-family: inherit;
-    font-weight: 500;
-  }
-
-  .btn-ver:hover {
-    background: var(--accent);
-    color: white;
-    border-color: var(--accent);
-    box-shadow: 0 4px 12px var(--accent-glow);
-  }
-
-  /* LIST VIEW CARD */
-  .cards-grid.list-view .card {
-    display: flex;
-    align-items: center;
-    border-radius: var(--radius);
-  }
-
-  .cards-grid.list-view .card-accent-bar {
-    width: 2px;
-    height: auto;
-    top: 0; bottom: 0; left: 0; right: auto;
-    transform: scaleY(0.3);
-    transform-origin: top;
-  }
-
-  .cards-grid.list-view .card:hover .card-accent-bar {
-    transform: scaleY(1);
-  }
-
-  .cards-grid.list-view .card-header {
-    padding: 14px 20px;
-    min-width: 180px;
-    border-bottom: none;
-  }
-
-  .cards-grid.list-view .card-body {
-    flex: 1;
-    padding: 14px 20px;
-    border-bottom: none;
-    display: flex;
-    align-items: center;
-    gap: 24px;
-  }
-
-  .cards-grid.list-view .card-meta {
-    flex-direction: row;
-  }
-
-  .cards-grid.list-view .card-divider { display: none; }
-
-  .cards-grid.list-view .card-productos {
-    padding: 14px 20px;
-  }
-
-  .cards-grid.list-view .card-footer {
-    padding: 14px 20px;
-    background: transparent;
-    border-top: none;
-    border-left: 1px solid var(--border);
-    min-width: 120px;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 8px;
-  }
-
-  /* EMPTY STATE */
-  .empty-state {
-    grid-column: 1 / -1;
-    text-align: center;
-    padding: 80px 20px;
-    color: var(--text3);
-  }
-
-  .empty-icon {
-    font-size: 48px;
-    margin-bottom: 16px;
-    opacity: 0.4;
-  }
-
-  .empty-title {
-    font-size: 18px;
-    font-weight: 600;
-    color: var(--text2);
-    margin-bottom: 8px;
-  }
-
-  .empty-sub {
-    font-size: 14px;
-    color: var(--text3);
-  }
-
-  /* MODAL IMPORT */
-  .modal-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.8);
-    backdrop-filter: blur(8px);
-    z-index: 200;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity var(--transition);
-  }
-
-  .modal-overlay.open {
-    opacity: 1;
-    pointer-events: all;
-  }
-
-  .modal {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    width: 580px;
-    max-width: 95vw;
-    max-height: 85vh;
-    overflow-y: auto;
-    transform: scale(0.95) translateY(10px);
-    transition: transform var(--transition);
-    box-shadow: 0 40px 80px rgba(0,0,0,0.6);
-  }
-
-  .modal-overlay.open .modal {
-    transform: scale(1) translateY(0);
-  }
-
-  .modal-header {
-    padding: 24px 28px 20px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .modal-title {
-    font-size: 18px;
-    font-weight: 700;
-  }
-
-  .modal-close {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    color: var(--text2);
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 18px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: var(--transition);
-  }
-
-  .modal-close:hover { background: var(--surface3); color: var(--text); }
-
-  .modal-body { padding: 24px 28px; }
-
-  .drop-zone {
-    border: 2px dashed var(--surface3);
-    border-radius: var(--radius-lg);
-    padding: 48px 24px;
-    text-align: center;
-    cursor: pointer;
-    transition: var(--transition);
-    position: relative;
-  }
-
-  .drop-zone:hover, .drop-zone.drag-over {
-    border-color: var(--accent);
-    background: rgba(0, 120, 212, 0.05);
-  }
-
-  .drop-icon { font-size: 40px; margin-bottom: 12px; opacity: 0.6; }
-
-  .drop-title {
-    font-size: 16px;
-    font-weight: 600;
-    margin-bottom: 6px;
-  }
-
-  .drop-sub {
-    font-size: 13px;
-    color: var(--text3);
-  }
-
-  .drop-hint {
-    font-size: 11px;
-    color: var(--text3);
-    margin-top: 8px;
-  }
-
-  #file-input { display: none; }
-
-  /* IMPORT PROGRESS */
-  .import-list {
-    margin-top: 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    max-height: 300px;
-    overflow-y: auto;
-  }
-
-  .import-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    background: var(--surface2);
-    border-radius: var(--radius);
-    padding: 10px 14px;
-    font-size: 13px;
-  }
-
-  .import-status {
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 11px;
-    flex-shrink: 0;
-  }
-
-  .status-pending { background: var(--surface3); color: var(--text3); }
-  .status-processing { background: rgba(0,120,212,0.2); color: var(--accent); animation: pulse 1s infinite; }
-  .status-done { background: rgba(16,124,16,0.2); color: #4fc04f; }
-  .status-error { background: rgba(200,50,50,0.2); color: #ff6666; }
-  .status-duplicate { background: rgba(255,140,0,0.2); color: #ffaa44; }
-
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
-
-  .import-filename {
-    flex: 1;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    color: var(--text2);
-  }
-
-  .import-info {
-    font-size: 11px;
-    color: var(--text3);
-    flex-shrink: 0;
-  }
-
-  .modal-footer {
-    padding: 16px 28px 24px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-top: 1px solid var(--border);
-    margin-top: 4px;
-  }
-
-  .import-summary {
-    font-size: 13px;
-    color: var(--text3);
-  }
-
-  .btn-primary {
-    background: var(--accent);
-    color: white;
-    border: none;
-    border-radius: var(--radius);
-    padding: 10px 22px;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: var(--transition);
-    font-family: inherit;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .btn-primary:hover { background: var(--accent2); }
-  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
-
-  /* MODAL PDF */
-  .pdf-modal-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.92);
-    backdrop-filter: blur(12px);
-    z-index: 300;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity var(--transition);
-  }
-
-  .pdf-modal-overlay.open {
-    opacity: 1;
-    pointer-events: all;
-  }
-
-  .pdf-modal {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    width: 800px;
-    max-width: 95vw;
-    height: 90vh;
-    display: flex;
-    flex-direction: column;
-    box-shadow: 0 40px 80px rgba(0,0,0,0.8);
-    transform: scale(0.96);
-    transition: transform var(--transition);
-    overflow: hidden;
-  }
-
-  .pdf-modal-overlay.open .pdf-modal {
-    transform: scale(1);
-  }
-
-  .pdf-modal-header {
-    padding: 16px 20px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
-  }
-
-  .pdf-modal-title {
-    font-size: 15px;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .pdf-modal-body {
-    flex: 1;
-    overflow: hidden;
-    position: relative;
-  }
-
-  .pdf-modal-body iframe {
-    width: 100%;
-    height: 100%;
-    border: none;
-    background: white;
-  }
-
-  /* TOAST */
-  .toast-container {
-    position: fixed;
-    bottom: 24px;
-    right: 24px;
-    z-index: 400;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    align-items: flex-end;
-  }
-
-  .toast {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 12px 18px;
-    font-size: 13px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
-    animation: toastIn 0.3s ease;
-    max-width: 320px;
-  }
-
-  @keyframes toastIn {
-    from { opacity: 0; transform: translateX(20px); }
-    to   { opacity: 1; transform: translateX(0); }
-  }
-
-  .toast.success { border-left: 3px solid #4fc04f; }
-  .toast.error { border-left: 3px solid #ff6666; }
-  .toast.info { border-left: 3px solid var(--accent); }
-
-  /* LOADING */
-  .loading-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(14,14,16,0.7);
-    z-index: 150;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.2s;
-  }
-
-  .loading-overlay.active {
-    opacity: 1;
-    pointer-events: all;
-  }
-
-  .spinner {
-    width: 40px;
-    height: 40px;
-    border: 3px solid var(--surface3);
-    border-top-color: var(--accent);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-  }
-
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  /* RESPONSIVE */
-  @media (max-width: 768px) {
-    .header { padding: 0 16px; }
-    .main { padding: 20px 16px; }
-    .header-stats { display: none; }
-    .cards-grid { grid-template-columns: 1fr; }
-  }
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --bg: #0e0e10;
+  --surface: #1a1a1f;
+  --surface2: #22222a;
+  --surface3: #2a2a35;
+  --accent: #0078d4;
+  --accent2: #106ebe;
+  --accent-glow: rgba(0,120,212,0.3);
+  --green: #107c10;
+  --green2: #4fc04f;
+  --orange: #ff8c00;
+  --red: #c84040;
+  --red2: #ff6666;
+  --text: #ffffff;
+  --text2: #a0a0b0;
+  --text3: #606070;
+  --border: rgba(255,255,255,0.07);
+  --radius: 12px;
+  --radius-lg: 18px;
+  --t: 0.22s cubic-bezier(0.4,0,0.2,1);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:'Inter','Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--surface3);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--accent)}
+
+/* ── LOGIN ── */
+#login-screen{position:fixed;inset:0;background:var(--bg);z-index:1000;display:flex;align-items:center;justify-content:center}
+.login-bg{position:absolute;inset:0;background:radial-gradient(ellipse at 30% 50%, rgba(0,120,212,0.08) 0%, transparent 60%), radial-gradient(ellipse at 70% 80%, rgba(16,124,16,0.05) 0%, transparent 50%)}
+.login-box{position:relative;background:var(--surface);border:1px solid var(--border);border-radius:24px;padding:48px 44px;width:420px;max-width:95vw;box-shadow:0 40px 80px rgba(0,0,0,0.6)}
+.login-logo{display:flex;align-items:center;gap:14px;margin-bottom:36px}
+.login-logo-icon{width:48px;height:48px;background:var(--accent);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px;box-shadow:0 0 30px var(--accent-glow)}
+.login-logo-text{font-size:22px;font-weight:700}
+.login-logo-sub{font-size:12px;color:var(--text2);margin-top:2px}
+.login-title{font-size:14px;color:var(--text2);margin-bottom:24px;font-weight:400}
+.form-group{margin-bottom:16px}
+.form-label{font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;font-weight:500;margin-bottom:6px;display:block}
+.form-input{width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius);padding:13px 16px;font-size:14px;color:var(--text);outline:none;transition:var(--t);font-family:inherit}
+.form-input::placeholder{color:var(--text3)}
+.form-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow)}
+.btn-login{width:100%;background:var(--accent);color:white;border:none;border-radius:var(--radius);padding:14px;font-size:15px;font-weight:600;cursor:pointer;transition:var(--t);font-family:inherit;margin-top:8px;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn-login:hover{background:var(--accent2);box-shadow:0 8px 24px var(--accent-glow)}
+.login-error{background:rgba(200,64,64,0.15);border:1px solid rgba(200,64,64,0.3);border-radius:var(--radius);padding:10px 14px;font-size:13px;color:var(--red2);margin-top:12px;display:none}
+
+/* ── HEADER ── */
+.header{position:sticky;top:0;z-index:100;background:rgba(14,14,16,0.93);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);padding:0 32px;height:60px;display:flex;align-items:center;justify-content:space-between}
+.header-left{display:flex;align-items:center;gap:14px}
+.logo-icon{width:34px;height:34px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:17px;box-shadow:0 0 16px var(--accent-glow)}
+.logo-text{font-size:17px;font-weight:700}
+.logo-sub{font-size:10px;color:var(--text2)}
+.header-center{display:flex;gap:6px}
+.nav-btn{background:none;border:none;color:var(--text3);padding:7px 14px;border-radius:8px;font-size:13px;cursor:pointer;transition:var(--t);font-family:inherit;font-weight:500;display:flex;align-items:center;gap:6px}
+.nav-btn:hover{background:var(--surface2);color:var(--text)}
+.nav-btn.active{background:var(--surface2);color:var(--text)}
+.header-right{display:flex;align-items:center;gap:10px}
+.stat-pill{display:flex;align-items:center;gap:7px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:5px 12px;font-size:12px;color:var(--text2)}
+.stat-pill .num{font-weight:700;color:var(--text);font-size:13px}
+.user-badge{display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:5px 14px 5px 8px;cursor:pointer;transition:var(--t)}
+.user-badge:hover{border-color:var(--accent)}
+.user-avatar{width:26px;height:26px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700}
+.user-name{font-size:12px;font-weight:500}
+.user-rol{font-size:10px;color:var(--text3)}
+.debug-btn{background:rgba(255,140,0,0.15);border:1px solid rgba(255,140,0,0.3);color:var(--orange);width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:var(--t)}
+.debug-btn:hover{background:rgba(255,140,0,0.25)}
+.debug-btn.active{background:rgba(255,140,0,0.25);box-shadow:0 0 12px rgba(255,140,0,0.3)}
+
+/* ── PAGES ── */
+.page{display:none;animation:fadeIn 0.2s ease}
+.page.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.main{padding:28px 32px;max-width:1600px;margin:0 auto}
+
+/* ── SEARCH HERO ── */
+.hero-label{font-size:12px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:14px}
+.search-bar{display:flex;gap:10px;align-items:center;margin-bottom:12px}
+.search-wrap{flex:1;position:relative}
+.search-icon{position:absolute;left:16px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:17px;pointer-events:none;transition:var(--t)}
+.search-input{width:100%;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius-lg);padding:15px 44px 15px 48px;font-size:15px;color:var(--text);outline:none;transition:var(--t);font-family:inherit}
+.search-input::placeholder{color:var(--text3)}
+.search-input:focus{border-color:var(--accent);background:var(--surface2);box-shadow:0 0 0 3px var(--accent-glow)}
+.search-input:focus~.search-icon{color:var(--accent)}
+.search-clear{position:absolute;right:14px;top:50%;transform:translateY(-50%);background:var(--surface3);border:none;color:var(--text2);width:26px;height:26px;border-radius:50%;cursor:pointer;font-size:14px;display:none;align-items:center;justify-content:center;transition:var(--t)}
+.search-clear:hover{background:var(--accent);color:white}
+.search-clear.vis{display:flex}
+.btn-import{background:var(--accent);color:white;border:none;border-radius:var(--radius);padding:0 22px;height:52px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:7px;white-space:nowrap;transition:var(--t);box-shadow:0 4px 16px var(--accent-glow);font-family:inherit}
+.btn-import:hover{background:var(--accent2);transform:translateY(-1px)}
+.filters{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+.filter-label{font-size:11px;color:var(--text3);margin-right:2px}
+.chip{background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:4px 13px;font-size:12px;color:var(--text2);cursor:pointer;transition:var(--t);user-select:none;font-family:inherit}
+.chip:hover{border-color:var(--accent);color:var(--text)}
+.chip.active{background:var(--accent);border-color:var(--accent);color:white}
+
+/* ── RESULTS HEADER ── */
+.results-header{display:flex;align-items:center;justify-content:space-between;margin:20px 0 16px}
+.results-count{font-size:13px;color:var(--text3)}
+.results-count strong{color:var(--text);font-size:15px}
+.view-toggle{display:flex;gap:3px;background:var(--surface2);border-radius:8px;padding:3px}
+.view-btn{background:none;border:none;color:var(--text3);width:30px;height:30px;border-radius:6px;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;transition:var(--t)}
+.view-btn.active{background:var(--surface3);color:var(--text)}
+
+/* ── CARDS ── */
+.cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:14px}
+.cards-grid.list-view{grid-template-columns:1fr}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;cursor:pointer;transition:transform var(--t),box-shadow var(--t),border-color var(--t);position:relative;animation:cardIn 0.3s ease both}
+@keyframes cardIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.card:hover{transform:translateY(-3px) scale(1.01);box-shadow:0 12px 40px rgba(0,0,0,0.5),0 0 0 1px var(--accent);border-color:var(--accent)}
+.card-bar{position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--accent),#50a0ff);opacity:0;transform:scaleX(0.2);transform-origin:left;transition:var(--t)}
+.card:hover .card-bar{opacity:1;transform:scaleX(1)}
+.card-head{padding:16px 18px 10px;display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.card-num{font-size:19px;font-weight:700;letter-spacing:-0.5px;font-variant-numeric:tabular-nums}
+.card-tipo{font-size:10px;font-weight:600;padding:3px 8px;border-radius:4px;text-transform:uppercase;letter-spacing:0.8px;flex-shrink:0;margin-top:3px}
+.tipo-oficial{background:rgba(0,120,212,0.2);color:#60b0ff;border:1px solid rgba(0,120,212,0.3)}
+.tipo-proforma{background:rgba(255,140,0,0.15);color:#ffaa44;border:1px solid rgba(255,140,0,0.25)}
+.card-body{padding:0 18px 14px}
+.card-cliente{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px}
+.card-dir{font-size:12px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:10px}
+.card-meta{display:flex;gap:14px;flex-wrap:wrap}
+.meta-item{display:flex;flex-direction:column;gap:1px}
+.meta-lbl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;font-weight:500}
+.meta-val{font-size:12px;color:var(--text2);font-weight:500}
+.card-div{height:1px;background:var(--border);margin:0 18px 10px}
+.card-prods{padding:0 18px 14px;display:flex;flex-wrap:wrap;gap:5px}
+.prod-tag{background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:3px 7px;font-size:11px;color:var(--text2);max-width:170px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card-foot{padding:9px 18px;background:var(--surface2);display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--border)}
+.card-fecha{font-size:11px;color:var(--text3);display:flex;align-items:center;gap:5px}
+.btn-ver{background:var(--surface3);border:1px solid var(--border);color:var(--text2);border-radius:7px;padding:5px 12px;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:5px;transition:var(--t);font-family:inherit;font-weight:500}
+.btn-ver:hover{background:var(--accent);color:white;border-color:var(--accent)}
+.btn-del{background:rgba(200,64,64,0.1);border:1px solid rgba(200,64,64,0.2);color:var(--red2);border-radius:7px;padding:5px 10px;font-size:11px;cursor:pointer;transition:var(--t);font-family:inherit}
+.btn-del:hover{background:rgba(200,64,64,0.25)}
+
+/* LIST VIEW */
+.cards-grid.list-view .card{display:flex;align-items:stretch;border-radius:var(--radius)}
+.cards-grid.list-view .card-head{min-width:190px;border-right:1px solid var(--border);padding:14px 18px}
+.cards-grid.list-view .card-body{flex:1;padding:14px 18px;display:flex;align-items:center;gap:20px}
+.cards-grid.list-view .card-dir{margin-bottom:0}
+.cards-grid.list-view .card-div{display:none}
+.cards-grid.list-view .card-prods{padding:14px 18px;border-left:1px solid var(--border)}
+.cards-grid.list-view .card-foot{border-top:none;border-left:1px solid var(--border);min-width:130px;flex-direction:column;align-items:flex-end;gap:6px}
+
+/* ── EMPTY ── */
+.empty{grid-column:1/-1;text-align:center;padding:70px 20px;color:var(--text3)}
+.empty-icon{font-size:44px;margin-bottom:14px;opacity:0.35}
+.empty-title{font-size:17px;font-weight:600;color:var(--text2);margin-bottom:6px}
+.empty-sub{font-size:13px}
+
+/* ── ADMIN PAGE ── */
+.admin-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+@media(max-width:900px){.admin-grid{grid-template-columns:1fr}}
+.panel-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden}
+.panel-head{padding:18px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.panel-title{font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px}
+.panel-body{padding:18px 22px}
+.btn-sm{background:var(--accent);color:white;border:none;border-radius:8px;padding:7px 16px;font-size:12px;font-weight:600;cursor:pointer;transition:var(--t);font-family:inherit;display:flex;align-items:center;gap:6px}
+.btn-sm:hover{background:var(--accent2)}
+.btn-sm.danger{background:rgba(200,64,64,0.2);color:var(--red2);border:1px solid rgba(200,64,64,0.3)}
+.btn-sm.danger:hover{background:rgba(200,64,64,0.4)}
+.btn-sm.ghost{background:var(--surface2);color:var(--text2);border:1px solid var(--border)}
+.btn-sm.ghost:hover{background:var(--surface3);color:var(--text)}
+
+/* USER TABLE */
+.user-table{width:100%;border-collapse:collapse}
+.user-table th{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;padding:0 0 10px;text-align:left;border-bottom:1px solid var(--border)}
+.user-table td{padding:12px 0;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle}
+.user-table tr:last-child td{border-bottom:none}
+.role-badge{font-size:10px;font-weight:600;padding:3px 8px;border-radius:4px;text-transform:uppercase;letter-spacing:0.5px}
+.role-maestro{background:rgba(255,140,0,0.2);color:#ffaa44;border:1px solid rgba(255,140,0,0.3)}
+.role-admin{background:rgba(0,120,212,0.2);color:#60b0ff;border:1px solid rgba(0,120,212,0.3)}
+.role-user{background:rgba(96,96,112,0.3);color:var(--text2);border:1px solid var(--border)}
+.status-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px}
+.dot-active{background:var(--green2)}
+.dot-inactive{background:var(--text3)}
+.user-actions{display:flex;gap:6px}
+
+/* PERMISOS PANEL */
+.perm-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.perm-item{display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px}
+.perm-label{font-size:12px;font-weight:500;color:var(--text2)}
+.perm-desc{font-size:10px;color:var(--text3);margin-top:1px}
+.toggle{width:36px;height:20px;background:var(--surface3);border-radius:10px;cursor:pointer;transition:var(--t);position:relative;flex-shrink:0;border:none}
+.toggle.on{background:var(--accent)}
+.toggle::after{content:'';position:absolute;top:3px;left:3px;width:14px;height:14px;background:white;border-radius:50%;transition:var(--t)}
+.toggle.on::after{left:19px}
+.toggle:disabled{opacity:0.4;cursor:not-allowed}
+
+/* ADD USER FORM */
+.add-user-form{display:flex;flex-direction:column;gap:12px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-select{width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius);padding:10px 14px;font-size:13px;color:var(--text);outline:none;transition:var(--t);font-family:inherit;appearance:none;cursor:pointer}
+.form-select:focus{border-color:var(--accent)}
+
+/* ── IMPORT MODAL ── */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,0.82);backdrop-filter:blur(10px);z-index:200;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity var(--t)}
+.overlay.open{opacity:1;pointer-events:all}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:20px;width:580px;max-width:95vw;max-height:88vh;overflow-y:auto;transform:scale(0.95) translateY(8px);transition:transform var(--t);box-shadow:0 40px 80px rgba(0,0,0,0.6)}
+.overlay.open .modal{transform:scale(1) translateY(0)}
+.modal-head{padding:22px 26px 18px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)}
+.modal-title{font-size:17px;font-weight:700}
+.modal-close{background:var(--surface2);border:1px solid var(--border);color:var(--text2);width:30px;height:30px;border-radius:7px;cursor:pointer;font-size:17px;display:flex;align-items:center;justify-content:center;transition:var(--t)}
+.modal-close:hover{background:var(--surface3);color:var(--text)}
+.modal-body{padding:22px 26px}
+.drop-zone{border:2px dashed var(--surface3);border-radius:var(--radius-lg);padding:44px 22px;text-align:center;cursor:pointer;transition:var(--t)}
+.drop-zone:hover,.drop-zone.over{border-color:var(--accent);background:rgba(0,120,212,0.05)}
+.drop-icon{font-size:38px;margin-bottom:10px;opacity:0.55}
+.drop-title{font-size:15px;font-weight:600;margin-bottom:5px}
+.drop-sub{font-size:12px;color:var(--text3)}
+.drop-hint{font-size:11px;color:var(--text3);margin-top:6px}
+#file-input{display:none}
+.import-list{margin-top:16px;display:flex;flex-direction:column;gap:7px;max-height:280px;overflow-y:auto}
+.import-item{display:flex;align-items:center;gap:10px;background:var(--surface2);border-radius:var(--radius);padding:9px 13px;font-size:12px}
+.imp-status{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0}
+.s-pending{background:var(--surface3);color:var(--text3)}
+.s-proc{background:rgba(0,120,212,0.2);color:var(--accent);animation:pulse 1s infinite}
+.s-done{background:rgba(16,124,16,0.2);color:var(--green2)}
+.s-error{background:rgba(200,64,64,0.2);color:var(--red2)}
+.s-dupe{background:rgba(255,140,0,0.2);color:var(--orange)}
+.s-manual{background:rgba(255,140,0,0.15);color:var(--orange)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+.imp-name{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text2)}
+.imp-info{font-size:11px;color:var(--text3);flex-shrink:0}
+.imp-manual-input{background:var(--surface3);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:11px;color:var(--text);width:120px;outline:none;font-family:inherit}
+.imp-manual-input:focus{border-color:var(--accent)}
+.modal-foot{padding:14px 26px 22px;display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--border);margin-top:4px}
+.import-summary{font-size:12px;color:var(--text3)}
+.btn-primary{background:var(--accent);color:white;border:none;border-radius:var(--radius);padding:9px 20px;font-size:13px;font-weight:600;cursor:pointer;transition:var(--t);font-family:inherit;display:flex;align-items:center;gap:7px}
+.btn-primary:hover{background:var(--accent2)}
+.btn-primary:disabled{opacity:0.4;cursor:not-allowed}
+
+/* ── PDF MODAL ── */
+.pdf-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.93);backdrop-filter:blur(14px);z-index:300;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity var(--t)}
+.pdf-overlay.open{opacity:1;pointer-events:all}
+.pdf-modal{background:var(--surface);border:1px solid var(--border);border-radius:20px;width:820px;max-width:96vw;height:91vh;display:flex;flex-direction:column;box-shadow:0 40px 80px rgba(0,0,0,0.8);transform:scale(0.96);transition:transform var(--t);overflow:hidden}
+.pdf-overlay.open .pdf-modal{transform:scale(1)}
+.pdf-head{padding:14px 18px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);flex-shrink:0}
+.pdf-title{font-size:14px;font-weight:600;display:flex;align-items:center;gap:9px}
+.pdf-body{flex:1;overflow:hidden}
+.pdf-body iframe{width:100%;height:100%;border:none;background:white}
+
+/* ── USER MODAL ── */
+.user-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.82);backdrop-filter:blur(10px);z-index:250;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity var(--t)}
+.user-overlay.open{opacity:1;pointer-events:all}
+.user-modal{background:var(--surface);border:1px solid var(--border);border-radius:20px;width:620px;max-width:95vw;max-height:90vh;overflow-y:auto;transform:scale(0.95);transition:transform var(--t);box-shadow:0 40px 80px rgba(0,0,0,0.6)}
+.user-overlay.open .user-modal{transform:scale(1)}
+
+/* ── DEBUG CONSOLE ── */
+.debug-console{position:fixed;bottom:0;left:0;right:0;height:260px;background:rgba(10,10,12,0.97);border-top:2px solid var(--orange);z-index:500;transform:translateY(100%);transition:transform 0.3s ease;font-family:'Courier New',monospace;display:flex;flex-direction:column}
+.debug-console.open{transform:translateY(0)}
+.debug-head{display:flex;align-items:center;justify-content:space-between;padding:8px 16px;border-bottom:1px solid rgba(255,140,0,0.2);flex-shrink:0}
+.debug-title{font-size:12px;font-weight:700;color:var(--orange);letter-spacing:1px}
+.debug-controls{display:flex;gap:8px;align-items:center}
+.debug-clear{background:none;border:1px solid rgba(255,140,0,0.3);color:var(--orange);font-size:11px;padding:3px 10px;border-radius:5px;cursor:pointer;font-family:inherit}
+.debug-close{background:none;border:none;color:var(--text3);font-size:18px;cursor:pointer;line-height:1}
+.debug-log{flex:1;overflow-y:auto;padding:8px 16px;display:flex;flex-direction:column;gap:2px}
+.log-entry{font-size:11px;line-height:1.5;display:flex;gap:10px;padding:1px 0}
+.log-time{color:var(--text3);flex-shrink:0;font-size:10px}
+.log-type{flex-shrink:0;font-weight:700;min-width:50px}
+.log-msg{color:#d0d0e0;word-break:break-all}
+.log-info .log-type{color:#60b0ff}
+.log-success .log-type{color:var(--green2)}
+.log-warn .log-type{color:var(--orange)}
+.log-error .log-type{color:var(--red2)}
+.log-data .log-type{color:#c0a0ff}
+
+/* ── TOAST ── */
+.toast-wrap{position:fixed;bottom:24px;right:24px;z-index:600;display:flex;flex-direction:column;gap:7px;align-items:flex-end}
+.toast{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:11px 16px;font-size:12px;display:flex;align-items:center;gap:9px;box-shadow:0 8px 24px rgba(0,0,0,0.4);animation:toastIn 0.3s ease;max-width:300px}
+@keyframes toastIn{from{opacity:0;transform:translateX(18px)}to{opacity:1;transform:translateX(0)}}
+.toast.success{border-left:3px solid var(--green2)}
+.toast.error{border-left:3px solid var(--red2)}
+.toast.info{border-left:3px solid var(--accent)}
+.toast.warn{border-left:3px solid var(--orange)}
+
+/* ── LOADING ── */
+.loading-overlay{position:fixed;inset:0;background:rgba(14,14,16,0.65);z-index:150;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity 0.2s}
+.loading-overlay.on{opacity:1;pointer-events:all}
+.spinner{width:38px;height:38px;border:3px solid var(--surface3);border-top-color:var(--accent);border-radius:50%;animation:spin 0.75s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── CONFIRM DIALOG ── */
+.confirm-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);backdrop-filter:blur(6px);z-index:400;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity var(--t)}
+.confirm-overlay.open{opacity:1;pointer-events:all}
+.confirm-box{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px 32px;width:380px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,0.5);transform:scale(0.95);transition:transform var(--t)}
+.confirm-overlay.open .confirm-box{transform:scale(1)}
+.confirm-title{font-size:16px;font-weight:700;margin-bottom:10px}
+.confirm-msg{font-size:13px;color:var(--text2);margin-bottom:22px;line-height:1.6}
+.confirm-btns{display:flex;gap:10px;justify-content:flex-end}
+
+@media(max-width:768px){
+  .header{padding:0 14px}
+  .main{padding:16px 14px}
+  .header-center,.stat-pill{display:none}
+  .cards-grid{grid-template-columns:1fr}
+  .admin-grid{grid-template-columns:1fr}
+  .perm-grid{grid-template-columns:1fr}
+}
 </style>
 </head>
 <body>
 
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-bg"></div>
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="login-logo-icon">📋</div>
+      <div>
+        <div class="login-logo-text">Remitos</div>
+        <div class="login-logo-sub">Panel de Consulta</div>
+      </div>
+    </div>
+    <div class="login-title">Ingresá con tu cuenta para continuar</div>
+    <div class="form-group">
+      <label class="form-label">Email</label>
+      <input type="email" class="form-input" id="login-email" placeholder="tu@email.com" autocomplete="email">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Contraseña</label>
+      <input type="password" class="form-input" id="login-pass" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <button class="btn-login" id="btn-login-submit">Ingresar</button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
+
 <!-- HEADER -->
-<header class="header">
-  <div class="header-logo">
+<header class="header" id="main-header" style="display:none">
+  <div class="header-left">
     <div class="logo-icon">📋</div>
     <div>
       <div class="logo-text">Remitos</div>
       <div class="logo-sub">Panel de Consulta</div>
     </div>
   </div>
-  <div class="header-stats">
-    <div class="stat-pill">
-      <span>Total</span>
-      <span class="num" id="stat-total">0</span>
+  <div class="header-center">
+    <button class="nav-btn active" data-page="remitos" onclick="navigate('remitos')">📄 Remitos</button>
+    <button class="nav-btn" data-page="admin" onclick="navigate('admin')" id="nav-admin" style="display:none">⚙️ Administración</button>
+  </div>
+  <div class="header-right">
+    <div class="stat-pill"><span>Total</span><span class="num" id="stat-total">0</span></div>
+    <div class="stat-pill"><span>Oficiales</span><span class="num" id="stat-of">0</span></div>
+    <div class="stat-pill"><span>Proformas</span><span class="num" id="stat-pf">0</span></div>
+    <button class="debug-btn" id="debug-toggle-btn" style="display:none" title="Consola Debug" onclick="toggleDebug()">🐛</button>
+    <div class="user-badge" id="user-badge" onclick="showUserMenu()">
+      <div class="user-avatar" id="user-avatar">?</div>
+      <div>
+        <div class="user-name" id="user-name-display">—</div>
+        <div class="user-rol" id="user-rol-display">—</div>
+      </div>
     </div>
-    <div class="stat-pill">
-      <span>Oficiales</span>
-      <span class="num" id="stat-oficiales">0</span>
-    </div>
-    <div class="stat-pill">
-      <span>Proformas</span>
-      <span class="num" id="stat-proformas">0</span>
-    </div>
+    <button class="btn-sm ghost" onclick="logout()" style="height:32px;font-size:11px">Salir</button>
   </div>
 </header>
 
-<!-- MAIN -->
-<main class="main">
+<!-- PAGES -->
+<div id="pages" style="display:none">
 
-  <!-- HERO SEARCH -->
-  <div class="hero">
-    <div class="hero-title">Buscar remitos</div>
-    <div class="search-bar">
-      <div class="search-input-wrap">
-        <input type="text" class="search-input" id="search-input"
-               placeholder="Buscar por número, cliente, producto, vendedor, dirección…"
-               autocomplete="off" spellcheck="false">
-        <span class="search-icon">🔍</span>
-        <button class="search-clear" id="search-clear" title="Limpiar">✕</button>
+  <!-- PAGE: REMITOS -->
+  <div class="page active" id="page-remitos">
+    <div class="main">
+      <div class="hero-label">Buscar remitos</div>
+      <div class="search-bar">
+        <div class="search-wrap">
+          <input type="text" class="search-input" id="search-input"
+            placeholder="Número, cliente, producto, vendedor, dirección…"
+            autocomplete="off" spellcheck="false">
+          <span class="search-icon">🔍</span>
+          <button class="search-clear" id="search-clear">✕</button>
+        </div>
+        <button class="btn-import" id="btn-import" style="display:none">＋ Importar PDFs</button>
       </div>
-      <button class="btn-import" id="btn-import">
-        ＋ Importar PDFs
-      </button>
-    </div>
-    <div class="filters">
-      <span class="filter-label">Tipo:</span>
-      <button class="chip active" data-filter="todos">Todos</button>
-      <button class="chip" data-filter="oficial">Oficial</button>
-      <button class="chip" data-filter="proforma">Proforma</button>
-    </div>
-  </div>
-
-  <!-- RESULTS -->
-  <div class="results-header">
-    <div class="results-count">
-      Mostrando <strong id="count-showing">0</strong> remitos
-    </div>
-    <div class="view-toggle">
-      <button class="view-btn active" id="btn-grid" title="Grilla">⊞</button>
-      <button class="view-btn" id="btn-list" title="Lista">☰</button>
+      <div class="filters">
+        <span class="filter-label">Tipo:</span>
+        <button class="chip active" data-filter="todos">Todos</button>
+        <button class="chip" data-filter="oficial">Oficial</button>
+        <button class="chip" data-filter="proforma">Proforma</button>
+      </div>
+      <div class="results-header">
+        <div class="results-count">Mostrando <strong id="count-showing">0</strong> remitos</div>
+        <div class="view-toggle">
+          <button class="view-btn active" id="btn-grid" title="Grilla">⊞</button>
+          <button class="view-btn" id="btn-list" title="Lista">☰</button>
+        </div>
+      </div>
+      <div class="cards-grid" id="cards-grid">
+        <div class="empty"><div class="empty-icon">📂</div><div class="empty-title">Cargando…</div></div>
+      </div>
     </div>
   </div>
 
-  <div class="cards-grid" id="cards-grid">
-    <div class="empty-state">
-      <div class="empty-icon">📂</div>
-      <div class="empty-title">No hay remitos cargados</div>
-      <div class="empty-sub">Hacé clic en "Importar PDFs" para comenzar</div>
+  <!-- PAGE: ADMIN -->
+  <div class="page" id="page-admin">
+    <div class="main">
+      <div class="hero-label">Administración del sistema</div>
+      <div class="admin-grid">
+
+        <!-- USUARIOS -->
+        <div class="panel-card" style="grid-column:1/-1">
+          <div class="panel-head">
+            <div class="panel-title">👥 Usuarios</div>
+            <button class="btn-sm" onclick="openAddUserModal()">＋ Agregar usuario</button>
+          </div>
+          <div class="panel-body">
+            <table class="user-table" id="user-table">
+              <thead>
+                <tr>
+                  <th>Usuario</th>
+                  <th>Rol</th>
+                  <th>Estado</th>
+                  <th>Último acceso</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="user-table-body">
+                <tr><td colspan="5" style="color:var(--text3);font-size:13px;padding:20px 0">Cargando usuarios…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- STATS -->
+        <div class="panel-card">
+          <div class="panel-head"><div class="panel-title">📊 Estadísticas</div></div>
+          <div class="panel-body" id="stats-panel">
+            <div style="display:flex;flex-direction:column;gap:12px" id="stats-content">
+              <div style="font-size:13px;color:var(--text3)">Cargando…</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ACTIVIDAD RECIENTE -->
+        <div class="panel-card">
+          <div class="panel-head"><div class="panel-title">🕐 Actividad Reciente</div></div>
+          <div class="panel-body">
+            <div id="activity-list" style="display:flex;flex-direction:column;gap:8px;font-size:13px;color:var(--text2)">Cargando…</div>
+          </div>
+        </div>
+
+      </div>
     </div>
   </div>
 
-</main>
+</div>
 
-<!-- MODAL IMPORT -->
-<div class="modal-overlay" id="modal-import">
+<!-- IMPORT MODAL -->
+<div class="overlay" id="modal-import">
   <div class="modal">
-    <div class="modal-header">
+    <div class="modal-head">
       <div class="modal-title">Importar Remitos</div>
-      <button class="modal-close" id="modal-close">✕</button>
+      <button class="modal-close" onclick="closeModal('modal-import')">✕</button>
     </div>
     <div class="modal-body">
       <div class="drop-zone" id="drop-zone">
         <div class="drop-icon">📄</div>
         <div class="drop-title">Arrastrá los PDFs acá</div>
         <div class="drop-sub">o hacé clic para seleccionar archivos</div>
-        <div class="drop-hint">Solo PDFs originales (sin _OCR). Podés seleccionar múltiples archivos.</div>
+        <div class="drop-hint">Solo PDFs originales (sin _OCR). Podés seleccionar múltiples a la vez.</div>
         <input type="file" id="file-input" multiple accept=".pdf">
       </div>
       <div class="import-list" id="import-list"></div>
     </div>
-    <div class="modal-footer">
+    <div class="modal-foot">
       <div class="import-summary" id="import-summary"></div>
-      <button class="btn-primary" id="btn-start-import" disabled>
-        ⬆ Importar
-      </button>
+      <button class="btn-primary" id="btn-start-import" disabled onclick="startImport()">⬆ Importar</button>
     </div>
   </div>
 </div>
 
-<!-- MODAL PDF VIEWER -->
-<div class="pdf-modal-overlay" id="modal-pdf">
+<!-- PDF VIEWER MODAL -->
+<div class="pdf-overlay" id="modal-pdf">
   <div class="pdf-modal">
-    <div class="pdf-modal-header">
-      <div class="pdf-modal-title">
-        <span>📄</span>
-        <span id="pdf-modal-title-text">Remito</span>
-      </div>
+    <div class="pdf-head">
+      <div class="pdf-title">📄 <span id="pdf-modal-title">Remito</span></div>
       <div style="display:flex;gap:8px;align-items:center">
-        <a id="pdf-download-link" href="#" target="_blank" style="text-decoration:none">
-          <button class="btn-ver">⬇ Abrir</button>
+        <a id="pdf-open-link" href="#" target="_blank" style="text-decoration:none">
+          <button class="btn-sm ghost" style="height:30px;font-size:11px">⬇ Abrir</button>
         </a>
-        <button class="modal-close" id="pdf-modal-close">✕</button>
+        <button class="modal-close" onclick="closePdfModal()">✕</button>
       </div>
     </div>
-    <div class="pdf-modal-body">
-      <iframe id="pdf-iframe" src="" title="PDF Remito"></iframe>
+    <div class="pdf-body">
+      <iframe id="pdf-iframe" src="" title="Remito PDF"></iframe>
     </div>
   </div>
+</div>
+
+<!-- USER EDIT MODAL -->
+<div class="user-overlay" id="modal-user">
+  <div class="user-modal">
+    <div class="modal-head">
+      <div class="modal-title" id="user-modal-title">Editar usuario</div>
+      <button class="modal-close" onclick="closeModal('modal-user')">✕</button>
+    </div>
+    <div class="modal-body" id="user-modal-body"></div>
+    <div class="modal-foot">
+      <div></div>
+      <button class="btn-primary" id="btn-save-user" onclick="saveUser()">💾 Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM DIALOG -->
+<div class="confirm-overlay" id="confirm-overlay">
+  <div class="confirm-box">
+    <div class="confirm-title" id="confirm-title">¿Confirmar?</div>
+    <div class="confirm-msg" id="confirm-msg"></div>
+    <div class="confirm-btns">
+      <button class="btn-sm ghost" onclick="closeConfirm(false)">Cancelar</button>
+      <button class="btn-sm danger" id="confirm-ok" onclick="closeConfirm(true)">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- DEBUG CONSOLE -->
+<div class="debug-console" id="debug-console">
+  <div class="debug-head">
+    <div class="debug-title">🐛 DEBUG CONSOLE</div>
+    <div class="debug-controls">
+      <button class="debug-clear" onclick="clearDebug()">Limpiar</button>
+      <span style="font-size:11px;color:var(--text3)" id="debug-count">0 entradas</span>
+      <button class="debug-close" onclick="toggleDebug()">✕</button>
+    </div>
+  </div>
+  <div class="debug-log" id="debug-log"></div>
 </div>
 
 <!-- TOAST -->
-<div class="toast-container" id="toast-container"></div>
+<div class="toast-wrap" id="toast-wrap"></div>
 
 <!-- LOADING -->
-<div class="loading-overlay" id="loading-overlay">
-  <div class="spinner"></div>
-</div>
+<div class="loading-overlay" id="loading-overlay"><div class="spinner"></div></div>
 
 <script>
-// ─── CONFIG SUPABASE ────────────────────────────────────────────────────────
-const SUPABASE_URL  = 'https://pigmpotwxdhcyfoxrqsk.supabase.co';
-const SUPABASE_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBpZ21wb3R3eGRoY3lmb3hycXNrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwMjA4NTcsImV4cCI6MjA5NjU5Njg1N30.VAR4-cjyUsvDEjAJHk31eUHvVUf9esWcnI7iQxp3pq0';
-const BUCKET        = 'remitos-pdf';
-
-// ─── PDF.JS ─────────────────────────────────────────────────────────────────
 pdfjsLib.GlobalWorkerOptions.workerSrc =
   'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-// ─── STATE ───────────────────────────────────────────────────────────────────
+// ════════════════════════════════════════════
+// CONFIG
+// ════════════════════════════════════════════
+const SB_URL = 'https://pigmpotwxdhcyfoxrqsk.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBpZ21wb3R3eGRoY3lmb3hycXNrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwMjA4NTcsImV4cCI6MjA5NjU5Njg1N30.VAR4-cjyUsvDEjAJHk31eUHvVUf9esWcnI7iQxp3pq0';
+const BUCKET = 'remitos-pdf';
+
+// ════════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════════
+let currentUser = null;
 let allRemitos = [];
 let filteredRemitos = [];
+let allUsers = [];
 let currentFilter = 'todos';
-let searchTimeout = null;
-let pendingFiles = [];
 let isGridView = true;
+let pendingFiles = [];
+let editingUserId = null;
+let confirmCallback = null;
+let debugOpen = false;
+let debugEntries = 0;
 
-// ─── SUPABASE HELPERS ────────────────────────────────────────────────────────
-async function sbFetch(path, opts = {}) {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    headers: {
-      'apikey': SUPABASE_KEY,
-      'Authorization': `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json',
-      'Prefer': 'return=representation',
-      ...opts.headers
-    },
-    ...opts
-  });
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(err);
+// ════════════════════════════════════════════
+// DEBUG CONSOLE
+// ════════════════════════════════════════════
+function dbg(type, msg, data) {
+  debugEntries++;
+  const log = document.getElementById('debug-log');
+  const count = document.getElementById('debug-count');
+  if (count) count.textContent = debugEntries + ' entradas';
+
+  const now = new Date();
+  const time = now.toTimeString().slice(0,8) + '.' + String(now.getMilliseconds()).padStart(3,'0');
+  const labels = {info:'INFO',success:'OK',warn:'WARN',error:'ERROR',data:'DATA'};
+
+  const entry = document.createElement('div');
+  entry.className = `log-entry log-${type}`;
+  entry.innerHTML = `
+    <span class="log-time">${time}</span>
+    <span class="log-type">[${labels[type]||type.toUpperCase()}]</span>
+    <span class="log-msg">${escHtml(msg)}${data ? ' → ' + escHtml(typeof data==='object'?JSON.stringify(data):String(data)) : ''}</span>`;
+  log.appendChild(entry);
+  log.scrollTop = log.scrollHeight;
+  console[type==='error'?'error':type==='warn'?'warn':'log'](`[${labels[type]}] ${msg}`, data||'');
+}
+
+function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function clearDebug(){document.getElementById('debug-log').innerHTML='';debugEntries=0;document.getElementById('debug-count').textContent='0 entradas'}
+function toggleDebug(){
+  debugOpen=!debugOpen;
+  document.getElementById('debug-console').classList.toggle('open',debugOpen);
+  document.getElementById('debug-toggle-btn').classList.toggle('active',debugOpen);
+}
+
+// ════════════════════════════════════════════
+// SUPABASE HELPERS
+// ════════════════════════════════════════════
+async function sbFetch(path, opts={}) {
+  const url = `${SB_URL}/rest/v1/${path}`;
+  dbg('info', `DB ${opts.method||'GET'} /${path.split('?')[0]}`);
+  try {
+    const res = await fetch(url, {
+      headers: {
+        'apikey': SB_KEY,
+        'Authorization': `Bearer ${SB_KEY}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=representation',
+        ...opts.headers
+      }, ...opts
+    });
+    const text = await res.text();
+    const parsed = text ? JSON.parse(text) : null;
+    if (!res.ok) {
+      dbg('error', `DB error ${res.status}`, text.slice(0,200));
+      throw new Error(`HTTP ${res.status}: ${text.slice(0,200)}`);
+    }
+    dbg('success', `DB OK ${res.status}`, Array.isArray(parsed)?`${parsed.length} rows`:typeof parsed);
+    return parsed;
+  } catch(e) {
+    dbg('error', 'sbFetch exception', e.message);
+    throw e;
   }
-  return res.json().catch(() => null);
 }
 
 async function sbUpload(filename, blob) {
-  const res = await fetch(
-    `${SUPABASE_URL}/storage/v1/object/${BUCKET}/${encodeURIComponent(filename)}`,
-    {
+  const url = `${SB_URL}/storage/v1/object/${BUCKET}/${encodeURIComponent(filename)}`;
+  dbg('info', `UPLOAD ${filename} (${(blob.size/1024).toFixed(1)}KB)`);
+  try {
+    const res = await fetch(url, {
       method: 'POST',
       headers: {
-        'apikey': SUPABASE_KEY,
-        'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'apikey': SB_KEY,
+        'Authorization': `Bearer ${SB_KEY}`,
         'Content-Type': 'application/pdf',
         'x-upsert': 'true'
       },
       body: blob
+    });
+    if (!res.ok) {
+      const err = await res.text();
+      dbg('error', `UPLOAD failed ${res.status}`, err.slice(0,200));
+      throw new Error(err);
     }
-  );
-  if (!res.ok) throw new Error(await res.text());
-  return `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${encodeURIComponent(filename)}`;
-}
-
-// ─── EXTRACT TEXT FROM PDF ───────────────────────────────────────────────────
-async function extractPdfText(file) {
-  const arrayBuffer = await file.arrayBuffer();
-  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-  let fullText = '';
-  for (let i = 1; i <= pdf.numPages; i++) {
-    const page = await pdf.getPage(i);
-    const content = await page.getTextContent();
-    fullText += content.items.map(s => s.str).join(' ') + '\n';
-  }
-  return fullText;
-}
-
-// ─── PARSE REMITO DATA ───────────────────────────────────────────────────────
-function parseRemito(text, filename) {
-  const data = {
-    numero: null,
-    fecha: null,
-    cliente: null,
-    direccion: null,
-    telefono: null,
-    vendedor: null,
-    productos: [],
-    texto_completo: text
-  };
-
-  // Número de remito: formato XXXX-XXXXXXXX
-  const numMatch = text.match(/\b(\d{4}-\d{7,8})\b/);
-  if (numMatch) data.numero = numMatch[1];
-
-  // Fallback: extraer del nombre de archivo
-  if (!data.numero) {
-    const fnMatch = filename.match(/(\d{4}-\d{7,8})/);
-    if (fnMatch) data.numero = fnMatch[1];
-  }
-
-  // Fecha: DD/MM/YY o DD/MM/YYYY
-  const fechaMatch = text.match(/(\d{2}\/\d{2}\/\d{2,4})/);
-  if (fechaMatch) {
-    const parts = fechaMatch[1].split('/');
-    let year = parts[2];
-    if (year.length === 2) year = '20' + year;
-    data.fecha = `${year}-${parts[1]}-${parts[0]}`;
-  }
-
-  // Vendedor: después de "Vendedor:"
-  const vendMatch = text.match(/Vendedor[:\s]+([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑa-záéíóúñ]+)/i);
-  if (vendMatch) data.vendedor = vendMatch[1].trim();
-
-  // Cliente: línea que tiene código de cliente (004048-002) o similar
-  const clienteMatch = text.match(/([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s]+)\s*\(\d{6}-\d{3}\)/);
-  if (clienteMatch) data.cliente = clienteMatch[1].trim();
-
-  // Dirección: línea con formato "CALLE NUMERO-CIUDAD"
-  const dirMatch = text.match(/ENVIAR\s+A[:\s]+(.+?)(?:TE\.|TEL\.|-\s*TE)/i);
-  if (dirMatch) {
-    data.direccion = dirMatch[1].replace(/[-–]/g, '').trim();
-  } else {
-    // Buscar línea con dirección en el header
-    const dirMatch2 = text.match(/([A-ZÁÉÍÓÚÑ\s]+\d+[-–][A-ZÁÉÍÓÚÑ\s]+-[A-ZÁÉÍÓÚÑ\s]+)/);
-    if (dirMatch2) data.direccion = dirMatch2[1].trim();
-  }
-
-  // Teléfono
-  const telMatch = text.match(/TE\.\s*[:\s]*([\d+]+)/i);
-  if (telMatch) data.telefono = telMatch[1].trim();
-
-  // Productos: líneas con formato "000XXX  DESCRIPCION"
-  const prodRegex = /(\d{6})\s+([A-ZÁÉÍÓÚÑ\*\.\s\d]+?)(?:\s+\d+[°º]?\s+[\d.]+)/g;
-  let prodMatch;
-  while ((prodMatch = prodRegex.exec(text)) !== null) {
-    const desc = prodMatch[2].trim();
-    if (desc && desc.length > 2 && !['ENVIO', 'ENVIAR'].includes(desc)) {
-      data.productos.push({ codigo: prodMatch[1], descripcion: desc });
-    }
-  }
-
-  return data;
-}
-
-// ─── LOAD ALL REMITOS ────────────────────────────────────────────────────────
-async function loadRemitos() {
-  showLoading(true);
-  try {
-    const data = await sbFetch('remitos?select=*&order=created_at.desc');
-    allRemitos = data || [];
-    updateStats();
-    applyFilters();
+    const publicUrl = `${SB_URL}/storage/v1/object/public/${BUCKET}/${encodeURIComponent(filename)}`;
+    dbg('success', `UPLOAD OK`, publicUrl);
+    return publicUrl;
   } catch(e) {
-    showToast('Error al cargar remitos: ' + e.message, 'error');
+    dbg('error', 'sbUpload exception', e.message);
+    throw e;
+  }
+}
+
+// ════════════════════════════════════════════
+// AUTH — simple email-based (no password in DB demo)
+// ════════════════════════════════════════════
+async function doLogin() {
+  const email = document.getElementById('login-email').value.trim().toLowerCase();
+  const pass = document.getElementById('login-pass').value;
+  const errEl = document.getElementById('login-error');
+  errEl.style.display = 'none';
+
+  if (!email) { showLoginError('Ingresá tu email'); return; }
+
+  dbg('info', 'Login attempt', email);
+
+  try {
+    showLoading(true);
+    const users = await sbFetch(`usuarios?email=eq.${encodeURIComponent(email)}&select=*`);
+
+    if (!users || users.length === 0) {
+      dbg('warn', 'Login: user not found', email);
+      showLoginError('Usuario no encontrado');
+      return;
+    }
+
+    const user = users[0];
+    if (!user.activo) {
+      dbg('warn', 'Login: user inactive', email);
+      showLoginError('Tu cuenta está desactivada');
+      return;
+    }
+
+    // For maestro: check hardcoded pass. For others: any non-empty pass accepted
+    // (you can upgrade this to hashed passwords later)
+    if (user.rol === 'maestro' && pass !== 'yesplack2026') {
+      dbg('warn', 'Login: wrong password for maestro');
+      showLoginError('Contraseña incorrecta');
+      return;
+    }
+    if (user.rol !== 'maestro' && !pass) {
+      showLoginError('Ingresá tu contraseña');
+      return;
+    }
+
+    // Update last access
+    await sbFetch(`usuarios?id=eq.${user.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ ultimo_acceso: new Date().toISOString() })
+    });
+
+    currentUser = user;
+    dbg('success', `Logged in as ${user.rol}`, user.nombre);
+    sessionStorage.setItem('remitos_user', JSON.stringify(user));
+    initApp();
+
+  } catch(e) {
+    dbg('error', 'Login exception', e.message);
+    showLoginError('Error de conexión: ' + e.message);
   } finally {
     showLoading(false);
   }
 }
 
-// ─── RENDER CARDS ────────────────────────────────────────────────────────────
+function showLoginError(msg) {
+  const el = document.getElementById('login-error');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function logout() {
+  dbg('info', 'Logout', currentUser?.email);
+  sessionStorage.removeItem('remitos_user');
+  currentUser = null;
+  allRemitos = [];
+  location.reload();
+}
+
+function can(perm) {
+  if (!currentUser) return false;
+  if (currentUser.rol === 'maestro') return true;
+  return currentUser.permisos?.[perm] === true;
+}
+
+// ════════════════════════════════════════════
+// INIT APP
+// ════════════════════════════════════════════
+function initApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('main-header').style.display = 'flex';
+  document.getElementById('pages').style.display = 'block';
+
+  // User badge
+  const initials = currentUser.nombre.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  document.getElementById('user-avatar').textContent = initials;
+  document.getElementById('user-name-display').textContent = currentUser.nombre;
+  document.getElementById('user-rol-display').textContent = currentUser.rol.charAt(0).toUpperCase() + currentUser.rol.slice(1);
+
+  // Show/hide features
+  if (can('importar')) document.getElementById('btn-import').style.display = 'flex';
+  if (can('panel_admin')) document.getElementById('nav-admin').style.display = 'flex';
+  if (can('debug')) document.getElementById('debug-toggle-btn').style.display = 'flex';
+
+  dbg('info', 'App initialized', { user: currentUser.nombre, rol: currentUser.rol, permisos: currentUser.permisos });
+
+  loadRemitos();
+  if (can('panel_admin')) loadUsers();
+}
+
+// ════════════════════════════════════════════
+// NAVIGATE
+// ════════════════════════════════════════════
+function navigate(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(`page-${page}`).classList.add('active');
+  document.querySelector(`[data-page="${page}"]`)?.classList.add('active');
+  dbg('info', 'Navigate', page);
+  if (page === 'admin') { loadUsers(); loadAdminStats(); }
+}
+
+// ════════════════════════════════════════════
+// LOAD REMITOS
+// ════════════════════════════════════════════
+async function loadRemitos() {
+  showLoading(true);
+  dbg('info', 'Loading remitos…');
+  try {
+    const data = await sbFetch('remitos?select=*&order=created_at.desc');
+    allRemitos = data || [];
+    dbg('success', `Loaded ${allRemitos.length} remitos`);
+    updateStats();
+    applyFilters();
+  } catch(e) {
+    dbg('error', 'loadRemitos failed', e.message);
+    showToast('Error al cargar remitos', 'error');
+  } finally {
+    showLoading(false);
+  }
+}
+
+// ════════════════════════════════════════════
+// EXTRACT TEXT
+// ════════════════════════════════════════════
+async function extractPdfText(file) {
+  dbg('info', `Extracting text from: ${file.name}`);
+  try {
+    const buf = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+    dbg('data', `PDF pages: ${pdf.numPages}`);
+    let full = '';
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      const pageText = content.items.map(s => s.str).join(' ');
+      full += pageText + '\n';
+      dbg('data', `Page ${i} text (first 150):`, pageText.slice(0,150));
+    }
+    dbg('success', `Text extracted, total chars: ${full.length}`);
+    return full;
+  } catch(e) {
+    dbg('error', `extractPdfText failed for ${file.name}`, e.message);
+    throw e;
+  }
+}
+
+// ════════════════════════════════════════════
+// PARSE REMITO
+// ════════════════════════════════════════════
+function parseRemito(text, filename) {
+  dbg('info', `Parsing remito from: ${filename}`);
+  const d = { numero:null, fecha:null, cliente:null, direccion:null, telefono:null, vendedor:null, productos:[], texto_completo:text };
+
+  // NUMBER — multiple patterns
+  const numPatterns = [
+    /\b(\d{4}-\d{8})\b/,
+    /\b(\d{4}-\d{7})\b/,
+    /\b(\d{4}-\d{6})\b/,
+    /OCR(\d{10})/,
+    /OCR\s*(\d{4})(\d{6,8})/,
+    /(\d{4})\s*-\s*(\d{7,8})/,
+  ];
+
+  for (const pat of numPatterns) {
+    const m = text.match(pat);
+    if (m) {
+      d.numero = m[1] + (m[2] ? '-' + m[2] : '');
+      // Normalize OCR format
+      if (!d.numero.includes('-') && d.numero.length >= 10) {
+        d.numero = d.numero.slice(0,4) + '-' + d.numero.slice(4);
+      }
+      dbg('success', `Number found with pattern ${pat}`, d.numero);
+      break;
+    }
+  }
+
+  // Fallback: try to get from filename like img20260529_12594246 → not a remito number
+  // Try OCR pattern at bottom: "OCR0020019220 S 1"
+  if (!d.numero) {
+    const ocrBottom = text.match(/OCR(\d{4})(\d{7,8})/i);
+    if (ocrBottom) {
+      d.numero = ocrBottom[1] + '-' + ocrBottom[2];
+      dbg('success', 'Number found from OCR footer', d.numero);
+    }
+  }
+
+  if (!d.numero) dbg('warn', `No number found in ${filename}`, text.slice(0,300));
+
+  // DATE
+  const fechaM = text.match(/(\d{2})\/(\d{2})\/(\d{2,4})/);
+  if (fechaM) {
+    let y = fechaM[3]; if (y.length===2) y='20'+y;
+    d.fecha = `${y}-${fechaM[2]}-${fechaM[1]}`;
+    dbg('data', 'Date', d.fecha);
+  }
+
+  // VENDEDOR
+  const vendM = text.match(/Vendedor[:\s]+([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑa-záéíóúñ]+)/i);
+  if (vendM) { d.vendedor = vendM[1].trim(); dbg('data','Vendedor',d.vendedor); }
+
+  // CLIENTE
+  const cliM = text.match(/([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s]+)\s*\(\d{6}-\d{3}\)/);
+  if (cliM) { d.cliente = cliM[1].trim(); dbg('data','Cliente',d.cliente); }
+
+  // DIRECCION
+  const dirM = text.match(/ENVIAR\s+A[:\s]+(.+?)(?=\s+TE\.|TEL\.|$)/i);
+  if (dirM) { d.direccion = dirM[1].replace(/[-–]/g,'').trim(); dbg('data','Direccion',d.direccion); }
+
+  // TELEFONO
+  const telM = text.match(/TE\.\s*[:\s]*([\d\+]{7,})/i);
+  if (telM) { d.telefono = telM[1].trim(); dbg('data','Telefono',d.telefono); }
+
+  // PRODUCTOS — match code + description
+  const prodRx = /(\d{6})\s{1,10}([A-ZÁÉÍÓÚÑ\*\.\(\)\s\d\/]{3,50?}?)(?=\s+\d+[°º]|\s+\d+\.\d)/g;
+  let pm;
+  while ((pm = prodRx.exec(text)) !== null) {
+    const desc = pm[2].trim().replace(/\s+/g,' ');
+    if (desc && desc.length > 2 && !['ENVIO','ENVIAR'].includes(desc.toUpperCase())) {
+      d.productos.push({ codigo: pm[1], descripcion: desc });
+      dbg('data', `Product: ${pm[1]}`, desc);
+    }
+  }
+
+  dbg('success', `Parse complete`, { numero: d.numero, cliente: d.cliente, productos: d.productos.length });
+  return d;
+}
+
+// ════════════════════════════════════════════
+// RENDER CARDS
+// ════════════════════════════════════════════
 function renderCards(remitos) {
   const grid = document.getElementById('cards-grid');
   document.getElementById('count-showing').textContent = remitos.length;
 
   if (!remitos.length) {
-    const msg = allRemitos.length
-      ? 'No se encontraron remitos con ese criterio'
-      : 'No hay remitos cargados';
-    const sub = allRemitos.length
-      ? 'Probá con otro término de búsqueda'
-      : 'Hacé clic en "Importar PDFs" para comenzar';
-    grid.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-icon">${allRemitos.length ? '🔍' : '📂'}</div>
-        <div class="empty-title">${msg}</div>
-        <div class="empty-sub">${sub}</div>
-      </div>`;
+    const isSearch = document.getElementById('search-input').value.trim();
+    grid.innerHTML = `<div class="empty">
+      <div class="empty-icon">${isSearch||currentFilter!=='todos'?'🔍':'📂'}</div>
+      <div class="empty-title">${isSearch||currentFilter!=='todos'?'Sin resultados':'No hay remitos cargados'}</div>
+      <div class="empty-sub">${isSearch||currentFilter!=='todos'?'Probá con otro término':'Hacé clic en "Importar PDFs" para comenzar'}</div>
+    </div>`;
     return;
   }
 
-  grid.innerHTML = remitos.map((r, i) => {
+  grid.innerHTML = remitos.map((r,i) => {
     const tipo = detectTipo(r.numero);
-    const productos = (r.productos || []).slice(0, 3);
-    const masProds = (r.productos || []).length - 3;
+    const prods = (r.productos||[]).slice(0,3);
+    const masP = (r.productos||[]).length - 3;
     const fecha = r.fecha ? formatFecha(r.fecha) : '—';
-
+    const canDel = can('eliminar');
     return `
-    <div class="card" style="animation-delay:${Math.min(i * 30, 300)}ms"
-         data-id="${r.id}" onclick="openPdf('${r.id}')">
-      <div class="card-accent-bar"></div>
-      <div class="card-header">
-        <div>
-          <div class="card-numero">${r.numero || '—'}</div>
-        </div>
+    <div class="card" style="animation-delay:${Math.min(i*25,250)}ms" onclick="openPdf('${r.id}')">
+      <div class="card-bar"></div>
+      <div class="card-head">
+        <div><div class="card-num">${r.numero||'—'}</div></div>
         <span class="card-tipo tipo-${tipo.toLowerCase()}">${tipo}</span>
       </div>
       <div class="card-body">
-        <div class="card-cliente">${r.cliente || 'Cliente no identificado'}</div>
-        <div class="card-direccion">📍 ${r.direccion || 'Dirección no disponible'}</div>
+        <div class="card-cliente">${r.cliente||'Cliente no identificado'}</div>
+        <div class="card-dir">📍 ${r.direccion||'—'}</div>
         <div class="card-meta">
-          ${r.vendedor ? `<div class="meta-item"><div class="meta-label">Vendedor</div><div class="meta-value">${r.vendedor}</div></div>` : ''}
-          ${r.telefono ? `<div class="meta-item"><div class="meta-label">Teléfono</div><div class="meta-value">${r.telefono}</div></div>` : ''}
+          ${r.vendedor?`<div class="meta-item"><div class="meta-lbl">Vendedor</div><div class="meta-val">${r.vendedor}</div></div>`:''}
+          ${r.telefono?`<div class="meta-item"><div class="meta-lbl">Teléfono</div><div class="meta-val">${r.telefono}</div></div>`:''}
         </div>
       </div>
-      ${productos.length ? `
-      <div class="card-divider"></div>
-      <div class="card-productos">
-        ${productos.map(p => `<span class="producto-tag" title="${p.descripcion}">${p.descripcion}</span>`).join('')}
-        ${masProds > 0 ? `<span class="producto-tag">+${masProds} más</span>` : ''}
-      </div>` : ''}
-      <div class="card-footer">
+      ${prods.length?`<div class="card-div"></div><div class="card-prods">
+        ${prods.map(p=>`<span class="prod-tag" title="${p.descripcion}">${p.descripcion}</span>`).join('')}
+        ${masP>0?`<span class="prod-tag">+${masP} más</span>`:''}
+      </div>`:''}
+      <div class="card-foot">
         <div class="card-fecha">📅 ${fecha}</div>
-        <button class="btn-ver" onclick="event.stopPropagation();openPdf('${r.id}')">
-          👁 Ver PDF
-        </button>
+        <div style="display:flex;gap:6px">
+          ${canDel?`<button class="btn-del" onclick="event.stopPropagation();deleteRemito('${r.id}','${r.numero}')">🗑</button>`:''}
+          <button class="btn-ver" onclick="event.stopPropagation();openPdf('${r.id}')">👁 Ver PDF</button>
+        </div>
       </div>
     </div>`;
   }).join('');
@@ -1272,135 +956,160 @@ function renderCards(remitos) {
 
 function detectTipo(numero) {
   if (!numero) return 'Oficial';
-  const prefix = numero.split('-')[0];
-  // 0000 = casa central / oficial, otros pueden ser proforma o sucursales
-  return prefix === '0000' ? 'Oficial' : 'Proforma';
+  return numero.split('-')[0] === '0000' ? 'Oficial' : 'Proforma';
 }
 
-function formatFecha(dateStr) {
-  if (!dateStr) return '—';
-  const [y, m, d] = dateStr.split('-');
-  return `${d}/${m}/${y}`;
+function formatFecha(d) {
+  if (!d) return '—';
+  const [y,m,dd] = d.split('-');
+  return `${dd}/${m}/${y}`;
 }
 
-// ─── SEARCH & FILTER ─────────────────────────────────────────────────────────
+// ════════════════════════════════════════════
+// FILTERS & SEARCH
+// ════════════════════════════════════════════
+let searchTimer = null;
 function applyFilters() {
   const q = document.getElementById('search-input').value.toLowerCase().trim();
-  const clearBtn = document.getElementById('search-clear');
-  clearBtn.classList.toggle('visible', q.length > 0);
-
-  let result = allRemitos;
-
-  if (currentFilter !== 'todos') {
-    result = result.filter(r => detectTipo(r.numero).toLowerCase() === currentFilter);
-  }
-
-  if (q) {
-    result = result.filter(r => {
-      const searchIn = [
-        r.numero, r.cliente, r.direccion, r.vendedor, r.telefono,
-        ...(r.productos || []).map(p => p.descripcion + ' ' + p.codigo),
-        r.texto_completo
-      ].join(' ').toLowerCase();
-      return q.split(' ').every(word => searchIn.includes(word));
+  document.getElementById('search-clear').classList.toggle('vis', q.length > 0);
+  let res = allRemitos;
+  if (currentFilter !== 'todos')
+    res = res.filter(r => detectTipo(r.numero).toLowerCase() === currentFilter);
+  if (q)
+    res = res.filter(r => {
+      const hay = [r.numero,r.cliente,r.direccion,r.vendedor,r.telefono,
+        ...(r.productos||[]).map(p=>p.descripcion+' '+p.codigo),
+        r.texto_completo].join(' ').toLowerCase();
+      return q.split(' ').every(w => hay.includes(w));
     });
-  }
-
-  filteredRemitos = result;
+  filteredRemitos = res;
   renderCards(filteredRemitos);
 }
 
 function updateStats() {
   document.getElementById('stat-total').textContent = allRemitos.length;
-  document.getElementById('stat-oficiales').textContent =
-    allRemitos.filter(r => detectTipo(r.numero) === 'Oficial').length;
-  document.getElementById('stat-proformas').textContent =
-    allRemitos.filter(r => detectTipo(r.numero) === 'Proforma').length;
+  document.getElementById('stat-of').textContent = allRemitos.filter(r=>detectTipo(r.numero)==='Oficial').length;
+  document.getElementById('stat-pf').textContent = allRemitos.filter(r=>detectTipo(r.numero)==='Proforma').length;
 }
 
-// ─── OPEN PDF ─────────────────────────────────────────────────────────────────
+// ════════════════════════════════════════════
+// PDF VIEWER
+// ════════════════════════════════════════════
 function openPdf(id) {
-  const r = allRemitos.find(x => x.id === id);
-  if (!r || !r.pdf_url) { showToast('PDF no disponible', 'error'); return; }
-
-  document.getElementById('pdf-modal-title-text').textContent = `Remito ${r.numero}`;
+  const r = allRemitos.find(x=>x.id===id);
+  if (!r?.pdf_url) { showToast('PDF no disponible','error'); dbg('warn','openPdf: no pdf_url',id); return; }
+  dbg('info','Opening PDF', r.pdf_url);
+  document.getElementById('pdf-modal-title').textContent = `Remito ${r.numero}`;
   document.getElementById('pdf-iframe').src = r.pdf_url;
-  document.getElementById('pdf-download-link').href = r.pdf_url;
+  document.getElementById('pdf-open-link').href = r.pdf_url;
   document.getElementById('modal-pdf').classList.add('open');
 }
 
-// ─── IMPORT FLOW ──────────────────────────────────────────────────────────────
+function closePdfModal() {
+  document.getElementById('modal-pdf').classList.remove('open');
+  document.getElementById('pdf-iframe').src = '';
+}
+
+// ════════════════════════════════════════════
+// DELETE REMITO
+// ════════════════════════════════════════════
+async function deleteRemito(id, numero) {
+  const ok = await showConfirm('Eliminar remito', `¿Eliminar el remito ${numero}? Esta acción no se puede deshacer.`);
+  if (!ok) return;
+  dbg('info','Deleting remito', id);
+  showLoading(true);
+  try {
+    await sbFetch(`remitos?id=eq.${id}`, { method:'DELETE' });
+    dbg('success','Deleted remito', id);
+    showToast('Remito eliminado', 'success');
+    await loadRemitos();
+  } catch(e) {
+    dbg('error','deleteRemito failed', e.message);
+    showToast('Error al eliminar: '+e.message, 'error');
+  } finally {
+    showLoading(false);
+  }
+}
+
+// ════════════════════════════════════════════
+// IMPORT FLOW
+// ════════════════════════════════════════════
 function openImportModal() {
+  if (!can('importar')) { showToast('Sin permisos para importar','error'); return; }
   pendingFiles = [];
   document.getElementById('import-list').innerHTML = '';
   document.getElementById('import-summary').textContent = '';
   document.getElementById('btn-start-import').disabled = true;
+  document.getElementById('btn-start-import').textContent = '⬆ Importar';
   document.getElementById('modal-import').classList.add('open');
+  dbg('info','Import modal opened');
 }
 
 function handleFileSelect(files) {
-  // Filter out OCR files
-  pendingFiles = Array.from(files).filter(f =>
-    f.name.endsWith('.pdf') && !f.name.includes('_OCR')
-  );
+  const all = Array.from(files);
+  pendingFiles = all.filter(f => f.name.endsWith('.pdf') && !f.name.toUpperCase().includes('_OCR'));
+  const ocr = all.filter(f => f.name.toUpperCase().includes('_OCR')).length;
+
+  dbg('info', `Files selected: ${all.length} total, ${pendingFiles.length} valid, ${ocr} OCR ignored`);
+  pendingFiles.forEach(f => dbg('data', 'File queued', `${f.name} (${(f.size/1024).toFixed(1)}KB)`));
 
   const list = document.getElementById('import-list');
   list.innerHTML = '';
-
-  pendingFiles.forEach((f, i) => {
+  pendingFiles.forEach((f,i) => {
     list.innerHTML += `
-      <div class="import-item" id="import-item-${i}">
-        <div class="import-status status-pending" id="status-${i}">○</div>
-        <div class="import-filename" title="${f.name}">${f.name}</div>
-        <div class="import-info" id="info-${i}">${(f.size/1024).toFixed(0)} KB</div>
+      <div class="import-item" id="imp-${i}">
+        <div class="imp-status s-pending" id="ist-${i}">○</div>
+        <div class="imp-name" title="${f.name}">${f.name}</div>
+        <div class="imp-info" id="inf-${i}">${(f.size/1024).toFixed(0)}KB</div>
       </div>`;
   });
 
-  const ocr = Array.from(files).filter(f => f.name.includes('_OCR')).length;
-  let summary = `${pendingFiles.length} archivo${pendingFiles.length !== 1 ? 's' : ''} listo${pendingFiles.length !== 1 ? 's' : ''}`;
-  if (ocr) summary += ` (${ocr} OCR ignorado${ocr !== 1 ? 's' : ''})`;
-  document.getElementById('import-summary').textContent = summary;
+  let sum = `${pendingFiles.length} archivo${pendingFiles.length!==1?'s':''} listo${pendingFiles.length!==1?'s':''}`;
+  if (ocr) sum += ` · ${ocr} OCR ignorado${ocr!==1?'s':''}`;
+  document.getElementById('import-summary').textContent = sum;
   document.getElementById('btn-start-import').disabled = pendingFiles.length === 0;
 }
 
 async function startImport() {
   const btn = document.getElementById('btn-start-import');
   btn.disabled = true;
-  btn.textContent = '⏳ Procesando…';
+  btn.innerHTML = '⏳ Procesando…';
+  dbg('info', `Starting import of ${pendingFiles.length} files`);
 
-  let ok = 0, dupes = 0, errors = 0;
+  let ok=0, dupes=0, errors=0, manual=0;
 
-  for (let i = 0; i < pendingFiles.length; i++) {
+  for (let i=0; i<pendingFiles.length; i++) {
     const file = pendingFiles[i];
-    setItemStatus(i, 'processing', '⟳');
+    setImpStatus(i,'s-proc','⟳');
+    dbg('info', `Processing [${i+1}/${pendingFiles.length}]`, file.name);
 
     try {
-      // Extraer texto
       const text = await extractPdfText(file);
       const parsed = parseRemito(text, file.name);
 
       if (!parsed.numero) {
-        setItemStatus(i, 'error', '✕');
-        document.getElementById('info-' + i).textContent = 'Sin número';
-        errors++;
+        // Show manual input
+        setImpStatus(i,'s-manual','✎');
+        document.getElementById('inf-'+i).innerHTML =
+          `<input class="imp-manual-input" id="manual-${i}" placeholder="XXXX-XXXXXXXX" maxlength="13">`;
+        dbg('warn', `No number for ${file.name} — waiting manual input`);
+        manual++;
         continue;
       }
 
-      // Verificar duplicado
+      // Check duplicate
       const existing = await sbFetch(`remitos?numero=eq.${parsed.numero}&select=id`);
-      if (existing && existing.length > 0) {
-        setItemStatus(i, 'duplicate', '≈');
-        document.getElementById('info-' + i).textContent = 'Ya existe';
-        dupes++;
-        continue;
+      if (existing?.length > 0) {
+        setImpStatus(i,'s-dupe','≈');
+        document.getElementById('inf-'+i).textContent = 'Duplicado';
+        dbg('warn', 'Duplicate', parsed.numero);
+        dupes++; continue;
       }
 
-      // Subir PDF
       const pdfUrl = await sbUpload(file.name, file);
 
-      // Guardar en DB
       await sbFetch('remitos', {
-        method: 'POST',
+        method:'POST',
         body: JSON.stringify({
           numero: parsed.numero,
           fecha: parsed.fecha,
@@ -1409,107 +1118,454 @@ async function startImport() {
           telefono: parsed.telefono,
           vendedor: parsed.vendedor,
           productos: parsed.productos,
-          texto_completo: text.substring(0, 5000),
+          texto_completo: text.substring(0,5000),
           pdf_url: pdfUrl,
           pdf_nombre: file.name
         })
       });
 
-      setItemStatus(i, 'done', '✓');
-      document.getElementById('info-' + i).textContent = parsed.numero;
+      setImpStatus(i,'s-done','✓');
+      document.getElementById('inf-'+i).textContent = parsed.numero;
+      dbg('success', `Imported`, parsed.numero);
       ok++;
 
     } catch(e) {
-      setItemStatus(i, 'error', '✕');
-      document.getElementById('info-' + i).textContent = 'Error';
-      console.error(file.name, e);
+      setImpStatus(i,'s-error','✕');
+      document.getElementById('inf-'+i).textContent = 'Error';
+      dbg('error', `Import failed for ${file.name}`, e.message);
       errors++;
     }
   }
 
-  btn.textContent = '✓ Finalizado';
-  document.getElementById('import-summary').textContent =
-    `${ok} importados · ${dupes} duplicados · ${errors} errores`;
-
-  if (ok > 0) {
-    showToast(`${ok} remito${ok !== 1 ? 's' : ''} importado${ok !== 1 ? 's' : ''} correctamente`, 'success');
-    await loadRemitos();
+  // Handle manual entries
+  if (manual > 0) {
+    btn.disabled = false;
+    btn.innerHTML = '✎ Confirmar manuales';
+    btn.onclick = () => processManualEntries(ok, dupes, errors, manual);
+    document.getElementById('import-summary').textContent =
+      `${ok} importados · ${dupes} duplicados · ${errors} errores · ${manual} requieren número manual`;
+    dbg('warn', `${manual} files need manual number input`);
+  } else {
+    finishImport(ok, dupes, errors);
   }
 }
 
-function setItemStatus(i, cls, icon) {
-  const el = document.getElementById('status-' + i);
-  el.className = `import-status status-${cls}`;
+async function processManualEntries(prevOk, prevDupes, prevErrors, manualCount) {
+  let ok=prevOk, errors=prevErrors;
+  dbg('info', 'Processing manual entries');
+
+  for (let i=0; i<pendingFiles.length; i++) {
+    const manInp = document.getElementById('manual-'+i);
+    if (!manInp) continue;
+
+    const numManual = manInp.value.trim();
+    const file = pendingFiles[i];
+
+    if (!numManual) {
+      setImpStatus(i,'s-error','✕');
+      document.getElementById('inf-'+i).textContent = 'Sin número';
+      errors++;
+      dbg('warn', `Manual skipped (empty) for ${file.name}`);
+      continue;
+    }
+
+    setImpStatus(i,'s-proc','⟳');
+    dbg('info', `Manual import ${file.name}`, numManual);
+
+    try {
+      const text = await extractPdfText(file);
+      const parsed = parseRemito(text, file.name);
+      parsed.numero = numManual;
+
+      const existing = await sbFetch(`remitos?numero=eq.${numManual}&select=id`);
+      if (existing?.length > 0) {
+        setImpStatus(i,'s-dupe','≈');
+        document.getElementById('inf-'+i).textContent = 'Duplicado';
+        prevDupes++;
+        continue;
+      }
+
+      const pdfUrl = await sbUpload(file.name, file);
+      await sbFetch('remitos', {
+        method:'POST',
+        body: JSON.stringify({
+          numero: parsed.numero, fecha: parsed.fecha, cliente: parsed.cliente,
+          direccion: parsed.direccion, telefono: parsed.telefono,
+          vendedor: parsed.vendedor, productos: parsed.productos,
+          texto_completo: text.substring(0,5000), pdf_url: pdfUrl, pdf_nombre: file.name
+        })
+      });
+
+      setImpStatus(i,'s-done','✓');
+      document.getElementById('inf-'+i).textContent = numManual;
+      dbg('success', `Manual import OK`, numManual);
+      ok++;
+    } catch(e) {
+      setImpStatus(i,'s-error','✕');
+      errors++;
+      dbg('error', `Manual import failed for ${file.name}`, e.message);
+    }
+  }
+
+  finishImport(ok, prevDupes, errors);
+}
+
+function finishImport(ok, dupes, errors) {
+  const btn = document.getElementById('btn-start-import');
+  btn.innerHTML = '✓ Finalizado';
+  btn.disabled = true;
+  document.getElementById('import-summary').textContent =
+    `${ok} importados · ${dupes} duplicados · ${errors} errores`;
+  dbg('info', 'Import finished', {ok,dupes,errors});
+  if (ok > 0) {
+    showToast(`${ok} remito${ok!==1?'s':''} importado${ok!==1?'s':''} correctamente`, 'success');
+    loadRemitos();
+  }
+}
+
+function setImpStatus(i,cls,icon) {
+  const el = document.getElementById('ist-'+i);
+  if (!el) return;
+  el.className = `imp-status ${cls}`;
   el.textContent = icon;
 }
 
-// ─── UI HELPERS ───────────────────────────────────────────────────────────────
-function showToast(msg, type = 'info') {
-  const container = document.getElementById('toast-container');
-  const id = Date.now();
-  const icons = { success: '✓', error: '✕', info: 'ℹ' };
-  container.innerHTML += `
-    <div class="toast ${type}" id="toast-${id}">
-      <span>${icons[type]}</span>
-      <span>${msg}</span>
+// ════════════════════════════════════════════
+// USER MANAGEMENT
+// ════════════════════════════════════════════
+async function loadUsers() {
+  dbg('info','Loading users');
+  try {
+    const data = await sbFetch('usuarios?select=*&order=created_at.asc');
+    allUsers = data || [];
+    dbg('success',`Loaded ${allUsers.length} users`);
+    renderUserTable();
+  } catch(e) {
+    dbg('error','loadUsers failed', e.message);
+  }
+}
+
+function renderUserTable() {
+  const body = document.getElementById('user-table-body');
+  if (!body) return;
+  if (!allUsers.length) {
+    body.innerHTML = '<tr><td colspan="5" style="color:var(--text3);font-size:13px;padding:16px 0">No hay usuarios</td></tr>';
+    return;
+  }
+  body.innerHTML = allUsers.map(u => {
+    const isMe = u.id === currentUser.id;
+    const isMaestroRow = u.rol === 'maestro';
+    const canEdit = !isMaestroRow || isMe;
+    return `
+    <tr>
+      <td>
+        <div style="font-weight:600;font-size:13px">${u.nombre}</div>
+        <div style="font-size:11px;color:var(--text3)">${u.email}</div>
+      </td>
+      <td><span class="role-badge role-${u.rol}">${u.rol}</span></td>
+      <td><span class="status-dot ${u.activo?'dot-active':'dot-inactive'}"></span>${u.activo?'Activo':'Inactivo'}</td>
+      <td style="font-size:12px;color:var(--text2)">${u.ultimo_acceso ? formatFecha(u.ultimo_acceso.split('T')[0]) : '—'}</td>
+      <td>
+        <div class="user-actions">
+          ${canEdit?`<button class="btn-sm ghost" style="height:28px;font-size:11px" onclick="openEditUserModal('${u.id}')">✏ Editar</button>`:''}
+          ${!isMaestroRow?`<button class="btn-sm danger" style="height:28px;font-size:11px;padding:0 8px" onclick="toggleUserActive('${u.id}',${u.activo})">${u.activo?'Desactivar':'Activar'}</button>`:''}
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function openAddUserModal() {
+  editingUserId = null;
+  document.getElementById('user-modal-title').textContent = 'Agregar usuario';
+  const isMaestro = currentUser.rol === 'maestro';
+  document.getElementById('user-modal-body').innerHTML = `
+    <div class="add-user-form">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Nombre</label>
+          <input type="text" class="form-input" id="u-nombre" placeholder="Nombre completo">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input type="email" class="form-input" id="u-email" placeholder="email@empresa.com">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Contraseña</label>
+          <input type="password" class="form-input" id="u-pass" placeholder="Contraseña de acceso">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Rol</label>
+          <select class="form-select" id="u-rol" onchange="updatePermGridForRole()">
+            <option value="user">Usuario</option>
+            ${isMaestro?'<option value="admin">Admin</option>':''}
+          </select>
+        </div>
+      </div>
+      <div style="margin-top:6px">
+        <div class="form-label" style="margin-bottom:8px">Permisos</div>
+        <div class="perm-grid" id="perm-grid">
+          ${renderPermGrid(getDefaultPerms('user'))}
+        </div>
+      </div>
     </div>`;
-  setTimeout(() => {
-    const t = document.getElementById('toast-' + id);
-    if (t) t.remove();
-  }, 4000);
+  document.getElementById('modal-user').classList.add('open');
+}
+
+function openEditUserModal(uid) {
+  const u = allUsers.find(x=>x.id===uid);
+  if (!u) return;
+  editingUserId = uid;
+  const isMaestro = currentUser.rol === 'maestro';
+  document.getElementById('user-modal-title').textContent = `Editar: ${u.nombre}`;
+  document.getElementById('user-modal-body').innerHTML = `
+    <div class="add-user-form">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Nombre</label>
+          <input type="text" class="form-input" id="u-nombre" value="${u.nombre}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input type="email" class="form-input" id="u-email" value="${u.email}">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Nueva contraseña</label>
+          <input type="password" class="form-input" id="u-pass" placeholder="Dejar vacío para no cambiar">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Rol</label>
+          <select class="form-select" id="u-rol" onchange="updatePermGridForRole()" ${!isMaestro||u.rol==='maestro'?'disabled':''}>
+            <option value="user" ${u.rol==='user'?'selected':''}>Usuario</option>
+            <option value="admin" ${u.rol==='admin'?'selected':''}>Admin</option>
+            ${u.rol==='maestro'?'<option value="maestro" selected>Maestro</option>':''}
+          </select>
+        </div>
+      </div>
+      <div style="margin-top:6px">
+        <div class="form-label" style="margin-bottom:8px">Permisos</div>
+        <div class="perm-grid" id="perm-grid">
+          ${renderPermGrid(u.permisos, u.rol==='maestro')}
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('modal-user').classList.add('open');
+}
+
+const PERMS_META = [
+  { key:'ver_remitos',      label:'Ver remitos',      desc:'Acceso al listado' },
+  { key:'buscar',           label:'Buscar',           desc:'Filtros y búsqueda' },
+  { key:'importar',         label:'Importar PDFs',    desc:'Cargar nuevos remitos' },
+  { key:'eliminar',         label:'Eliminar',         desc:'Borrar remitos' },
+  { key:'panel_admin',      label:'Panel Admin',      desc:'Ver administración' },
+  { key:'gestionar_usuarios',label:'Gestionar usuarios',desc:'Crear y editar usuarios' },
+  { key:'debug',            label:'Consola Debug',    desc:'Ver logs del sistema' },
+];
+
+function renderPermGrid(perms, disabled=false) {
+  return PERMS_META.map(p => `
+    <div class="perm-item">
+      <div>
+        <div class="perm-label">${p.label}</div>
+        <div class="perm-desc">${p.desc}</div>
+      </div>
+      <button class="toggle ${perms[p.key]?'on':''} ${disabled?'disabled':''}"
+        id="perm-${p.key}"
+        ${disabled?'disabled':''}
+        onclick="togglePerm('${p.key}',this)"></button>
+    </div>`).join('');
+}
+
+function getDefaultPerms(rol) {
+  const base = {ver_remitos:true,buscar:true,importar:false,eliminar:false,panel_admin:false,gestionar_usuarios:false,debug:false};
+  if (rol==='admin') {base.importar=true;base.panel_admin=true;}
+  return base;
+}
+
+function updatePermGridForRole() {
+  const rol = document.getElementById('u-rol')?.value;
+  if (!rol) return;
+  document.getElementById('perm-grid').innerHTML = renderPermGrid(getDefaultPerms(rol));
+}
+
+function togglePerm(key, btn) {
+  btn.classList.toggle('on');
+}
+
+function readPermsFromGrid() {
+  const perms = {};
+  PERMS_META.forEach(p => {
+    const btn = document.getElementById('perm-'+p.key);
+    perms[p.key] = btn ? btn.classList.contains('on') : false;
+  });
+  return perms;
+}
+
+async function saveUser() {
+  const nombre = document.getElementById('u-nombre')?.value.trim();
+  const email = document.getElementById('u-email')?.value.trim().toLowerCase();
+  const pass = document.getElementById('u-pass')?.value;
+  const rol = document.getElementById('u-rol')?.value;
+  const permisos = readPermsFromGrid();
+
+  if (!nombre || !email) { showToast('Completá nombre y email','warn'); return; }
+
+  dbg('info', editingUserId?'Updating user':'Creating user', {nombre,email,rol,permisos});
+  showLoading(true);
+
+  try {
+    if (editingUserId) {
+      const payload = {nombre,email,rol,permisos};
+      await sbFetch(`usuarios?id=eq.${editingUserId}`, {method:'PATCH', body:JSON.stringify(payload)});
+      dbg('success','User updated', editingUserId);
+      showToast('Usuario actualizado','success');
+    } else {
+      if (!pass) { showToast('Ingresá una contraseña','warn'); showLoading(false); return; }
+      await sbFetch('usuarios', {method:'POST', body:JSON.stringify({nombre,email,rol,permisos,activo:true})});
+      dbg('success','User created', email);
+      showToast('Usuario creado','success');
+    }
+    closeModal('modal-user');
+    await loadUsers();
+  } catch(e) {
+    dbg('error','saveUser failed',e.message);
+    showToast('Error: '+e.message,'error');
+  } finally {
+    showLoading(false);
+  }
+}
+
+async function toggleUserActive(uid, current) {
+  const u = allUsers.find(x=>x.id===uid);
+  const ok = await showConfirm(current?'Desactivar usuario':'Activar usuario',
+    `¿${current?'Desactivar':'Activar'} a ${u?.nombre}?`);
+  if (!ok) return;
+  dbg('info', `Toggle user active: ${uid}`, !current);
+  try {
+    await sbFetch(`usuarios?id=eq.${uid}`, {method:'PATCH', body:JSON.stringify({activo:!current})});
+    showToast(`Usuario ${!current?'activado':'desactivado'}`,'success');
+    await loadUsers();
+  } catch(e) {
+    dbg('error','toggleUserActive failed',e.message);
+    showToast('Error: '+e.message,'error');
+  }
+}
+
+// ════════════════════════════════════════════
+// ADMIN STATS
+// ════════════════════════════════════════════
+async function loadAdminStats() {
+  try {
+    const content = document.getElementById('stats-content');
+    if (!content) return;
+    const stats = [
+      {label:'Total remitos', value: allRemitos.length, icon:'📄'},
+      {label:'Oficiales', value: allRemitos.filter(r=>detectTipo(r.numero)==='Oficial').length, icon:'✅'},
+      {label:'Proformas', value: allRemitos.filter(r=>detectTipo(r.numero)==='Proforma').length, icon:'📝'},
+      {label:'Usuarios activos', value: allUsers.filter(u=>u.activo).length, icon:'👥'},
+    ];
+    content.innerHTML = stats.map(s=>`
+      <div style="display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border-radius:var(--radius);padding:12px 16px">
+        <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text2)">
+          <span>${s.icon}</span> ${s.label}
+        </div>
+        <div style="font-size:20px;font-weight:700">${s.value}</div>
+      </div>`).join('');
+
+    const actList = document.getElementById('activity-list');
+    if (actList) {
+      const recent = [...allRemitos].slice(0,6);
+      if (!recent.length) { actList.innerHTML = '<div style="color:var(--text3);font-size:13px">Sin actividad</div>'; return; }
+      actList.innerHTML = recent.map(r=>`
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+          <span style="font-size:16px">📄</span>
+          <div style="flex:1">
+            <div style="font-size:12px;font-weight:600">${r.numero||'—'}</div>
+            <div style="font-size:11px;color:var(--text3)">${r.cliente||'—'} · ${r.fecha?formatFecha(r.fecha):'—'}</div>
+          </div>
+        </div>`).join('');
+    }
+  } catch(e) { dbg('error','loadAdminStats failed',e.message); }
+}
+
+// ════════════════════════════════════════════
+// UI HELPERS
+// ════════════════════════════════════════════
+function showToast(msg, type='info') {
+  const w = document.getElementById('toast-wrap');
+  const id = Date.now();
+  const icons = {success:'✓',error:'✕',info:'ℹ',warn:'⚠'};
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.id = 'toast-'+id;
+  el.innerHTML = `<span>${icons[type]||'•'}</span><span>${msg}</span>`;
+  w.appendChild(el);
+  setTimeout(()=>{ const t=document.getElementById('toast-'+id); if(t) t.remove(); },4000);
 }
 
 function showLoading(v) {
-  document.getElementById('loading-overlay').classList.toggle('active', v);
+  document.getElementById('loading-overlay').classList.toggle('on',v);
 }
 
-// ─── EVENT LISTENERS ──────────────────────────────────────────────────────────
-document.getElementById('btn-import').onclick = openImportModal;
-document.getElementById('modal-close').onclick = () =>
-  document.getElementById('modal-import').classList.remove('open');
-document.getElementById('pdf-modal-close').onclick = () => {
-  document.getElementById('modal-pdf').classList.remove('open');
-  document.getElementById('pdf-iframe').src = '';
-};
+function closeModal(id) {
+  document.getElementById(id)?.classList.remove('open');
+}
 
-document.getElementById('modal-import').addEventListener('click', function(e) {
-  if (e.target === this) this.classList.remove('open');
-});
-document.getElementById('modal-pdf').addEventListener('click', function(e) {
-  if (e.target === this) {
-    this.classList.remove('open');
-    document.getElementById('pdf-iframe').src = '';
-  }
-});
+function showConfirm(title, msg) {
+  return new Promise(resolve => {
+    document.getElementById('confirm-title').textContent = title;
+    document.getElementById('confirm-msg').textContent = msg;
+    document.getElementById('confirm-overlay').classList.add('open');
+    confirmCallback = resolve;
+  });
+}
+
+function closeConfirm(ok) {
+  document.getElementById('confirm-overlay').classList.remove('open');
+  if (confirmCallback) { confirmCallback(ok); confirmCallback=null; }
+}
+
+// ════════════════════════════════════════════
+// EVENT LISTENERS
+// ════════════════════════════════════════════
+document.getElementById('btn-login-submit').onclick = doLogin;
+document.getElementById('login-pass').addEventListener('keydown', e => { if (e.key==='Enter') doLogin(); });
+document.getElementById('login-email').addEventListener('keydown', e => { if (e.key==='Enter') document.getElementById('login-pass').focus(); });
+
+document.getElementById('btn-import').onclick = openImportModal;
 
 document.getElementById('search-input').addEventListener('input', () => {
-  clearTimeout(searchTimeout);
-  searchTimeout = setTimeout(applyFilters, 200);
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(applyFilters, 180);
 });
 
 document.getElementById('search-clear').onclick = () => {
-  document.getElementById('search-input').value = '';
+  document.getElementById('search-input').value='';
   applyFilters();
 };
 
-document.querySelectorAll('.chip').forEach(chip => {
-  chip.addEventListener('click', () => {
-    document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
-    chip.classList.add('active');
-    currentFilter = chip.dataset.filter;
+document.querySelectorAll('.chip').forEach(c => {
+  c.addEventListener('click', () => {
+    document.querySelectorAll('.chip').forEach(x=>x.classList.remove('active'));
+    c.classList.add('active');
+    currentFilter = c.dataset.filter;
     applyFilters();
   });
 });
 
 document.getElementById('btn-grid').onclick = () => {
-  isGridView = true;
+  isGridView=true;
   document.getElementById('cards-grid').classList.remove('list-view');
   document.getElementById('btn-grid').classList.add('active');
   document.getElementById('btn-list').classList.remove('active');
 };
 
 document.getElementById('btn-list').onclick = () => {
-  isGridView = false;
+  isGridView=false;
   document.getElementById('cards-grid').classList.add('list-view');
   document.getElementById('btn-list').classList.add('active');
   document.getElementById('btn-grid').classList.remove('active');
@@ -1518,38 +1574,54 @@ document.getElementById('btn-list').onclick = () => {
 // Drop zone
 const dropZone = document.getElementById('drop-zone');
 const fileInput = document.getElementById('file-input');
-
 dropZone.onclick = () => fileInput.click();
-fileInput.onchange = (e) => handleFileSelect(e.target.files);
+fileInput.onchange = e => handleFileSelect(e.target.files);
+dropZone.ondragover = e => { e.preventDefault(); dropZone.classList.add('over'); };
+dropZone.ondragleave = () => dropZone.classList.remove('over');
+dropZone.ondrop = e => { e.preventDefault(); dropZone.classList.remove('over'); handleFileSelect(e.dataTransfer.files); };
 
-dropZone.ondragover = (e) => {
-  e.preventDefault();
-  dropZone.classList.add('drag-over');
-};
-dropZone.ondragleave = () => dropZone.classList.remove('drag-over');
-dropZone.ondrop = (e) => {
-  e.preventDefault();
-  dropZone.classList.remove('drag-over');
-  handleFileSelect(e.dataTransfer.files);
-};
+// Close overlays on bg click
+['modal-import','modal-user','modal-pdf'].forEach(id => {
+  document.getElementById(id)?.addEventListener('click', function(e) {
+    if (e.target===this) {
+      if (id==='modal-pdf') closePdfModal();
+      else closeModal(id);
+    }
+  });
+});
 
-document.getElementById('btn-start-import').onclick = startImport;
-
-// Keyboard
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') {
-    document.getElementById('modal-import').classList.remove('open');
-    document.getElementById('modal-pdf').classList.remove('open');
-    document.getElementById('pdf-iframe').src = '';
+document.addEventListener('keydown', e => {
+  if (e.key==='Escape') {
+    closeModal('modal-import');
+    closeModal('modal-user');
+    closePdfModal();
+    closeConfirm(false);
   }
-  if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+  if ((e.ctrlKey||e.metaKey) && e.key==='k') {
     e.preventDefault();
-    document.getElementById('search-input').focus();
+    document.getElementById('search-input')?.focus();
   }
 });
 
-// ─── INIT ─────────────────────────────────────────────────────────────────────
-loadRemitos();
+// ════════════════════════════════════════════
+// BOOT — check session
+// ════════════════════════════════════════════
+(function boot() {
+  dbg('info','App booting…', window.location.href);
+  const saved = sessionStorage.getItem('remitos_user');
+  if (saved) {
+    try {
+      currentUser = JSON.parse(saved);
+      dbg('info','Session restored', currentUser.email);
+      initApp();
+    } catch(e) {
+      dbg('warn','Session restore failed', e.message);
+      sessionStorage.removeItem('remitos_user');
+    }
+  } else {
+    dbg('info','No session — showing login');
+  }
+})();
 </script>
 </body>
 </html>
