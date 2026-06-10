@@ -697,92 +697,46 @@ function eh(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').repla
 function clearDbg(){document.getElementById('dbg-log').innerHTML='';dbgN=0;document.getElementById('dbg-cnt').textContent='0 entradas';}
 function toggleDbg(){dbgOpen=!dbgOpen;document.getElementById('dbg-con').classList.toggle('open',dbgOpen);document.getElementById('dbg-btn').classList.toggle('on',dbgOpen);}
 
-// ── OCR WEB WORKER (runs off main thread — immune to tab throttling) ────────
-// The worker code is embedded as a Blob so no separate file is needed.
-// It loads Tesseract inside the worker, renders the PDF page via OffscreenCanvas,
-// and posts back the extracted text. The main thread stays free.
+// ── OCR WEB WORKER — Tesseract only, PDF rendering stays on main thread ─────
+// PDF.js needs `document` so it can't run inside a Worker.
+// We render the PDF to ImageBitmap on the main thread, then transfer it
+// to the Worker for Tesseract OCR (which has no DOM dependency).
 
 let ocrWorker = null;
 let ocrWorkerReady = false;
-let ocrPendingResolvers = {}; // jobId → {resolve, reject}
+let ocrPendingResolvers = {};
 let ocrJobCounter = 0;
 
 const OCR_WORKER_CODE = `
-importScripts(
-  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.0.4/tesseract.min.js'
-);
+importScripts('https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.0.4/tesseract.min.js');
 
-pdfjsLib.GlobalWorkerOptions.workerSrc =
-  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-
-let tessWorker = null;
+let tess = null;
 
 async function initTess() {
-  if (tessWorker) return;
-  postMessage({ type: 'log', level: 'ocr', msg: 'Initializing Tesseract inside worker…' });
-  try {
-    tessWorker = await Tesseract.createWorker('spa', 1, {
-      logger: m => {
-        if (m.status && m.progress)
-          postMessage({ type: 'progress', status: m.status, pct: Math.round(m.progress * 100) });
-      }
-    });
-    postMessage({ type: 'log', level: 'ok', msg: 'Tesseract ready inside worker' });
-  } catch(e) {
-    postMessage({ type: 'log', level: 'warn', msg: 'spa failed, trying eng: ' + e.message });
-    tessWorker = await Tesseract.createWorker('eng', 1);
-  }
-}
-
-async function processFile(jobId, arrayBuffer, filename) {
-  postMessage({ type: 'log', level: 'info', msg: 'Worker processing: ' + filename });
-
-  // Step 1: try embedded text
-  try {
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-    let fullTxt = '';
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const pg = await pdf.getPage(i);
-      const c = await pg.getTextContent();
-      fullTxt += c.items.map(s => s.str).join(' ') + '\\n';
+  if (tess) return;
+  postMessage({ type: 'log', level: 'ocr', msg: 'Loading Tesseract language data…' });
+  tess = await Tesseract.createWorker('spa', 1, {
+    logger: m => {
+      if (m.status && m.progress)
+        postMessage({ type: 'progress', status: m.status, pct: Math.round(m.progress * 100) });
     }
-    const cleaned = fullTxt.replace(/\\s+/g, ' ').trim();
-    if (cleaned.length > 60) {
-      postMessage({ type: 'log', level: 'ok', msg: 'Embedded text: ' + cleaned.length + ' chars' });
-      postMessage({ type: 'done', jobId, text: cleaned, method: 'embedded' });
-      return;
-    }
-    postMessage({ type: 'log', level: 'warn', msg: 'Embedded text too short (' + cleaned.length + ') → OCR' });
-  } catch(e) {
-    postMessage({ type: 'log', level: 'warn', msg: 'Embedded text error: ' + e.message });
-  }
-
-  // Step 2: render PDF → OffscreenCanvas → OCR
-  try {
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-    const page = await pdf.getPage(1);
-    const scale = 2.5;
-    const vp = page.getViewport({ scale });
-    const canvas = new OffscreenCanvas(vp.width, vp.height);
-    const ctx = canvas.getContext('2d');
-    await page.render({ canvasContext: ctx, viewport: vp }).promise;
-    postMessage({ type: 'log', level: 'ocr', msg: 'Canvas rendered: ' + Math.round(vp.width) + 'x' + Math.round(vp.height) });
-
-    await initTess();
-    const { data: { text } } = await tessWorker.recognize(canvas);
-    if (!text || text.trim().length < 10) throw new Error('OCR returned empty text');
-    postMessage({ type: 'log', level: 'ok', msg: 'OCR done: ' + text.length + ' chars' });
-    postMessage({ type: 'done', jobId, text, method: 'ocr' });
-  } catch(e) {
-    postMessage({ type: 'error', jobId, msg: e.message });
-  }
+  });
+  postMessage({ type: 'log', level: 'ok', msg: 'Tesseract ready inside worker' });
 }
 
 self.onmessage = async (e) => {
-  const { type, jobId, arrayBuffer, filename } = e.data;
-  if (type === 'process') {
-    await processFile(jobId, arrayBuffer, filename);
+  const { type, jobId, bitmap } = e.data;
+  if (type !== 'ocr') return;
+  try {
+    await initTess();
+    const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(bitmap, 0, 0);
+    bitmap.close();
+    const { data: { text } } = await tess.recognize(canvas);
+    postMessage({ type: 'done', jobId, text: text || '' });
+  } catch(e) {
+    postMessage({ type: 'error', jobId, msg: e.message });
   }
 };
 
@@ -791,24 +745,24 @@ postMessage({ type: 'ready' });
 
 function initOcrWorker() {
   if (ocrWorker) return;
-  dbg('ocr', 'Creating OCR Web Worker (off-thread)…');
+  dbg('ocr', 'Creating Tesseract Web Worker…');
   const blob = new Blob([OCR_WORKER_CODE], { type: 'application/javascript' });
   const url = URL.createObjectURL(blob);
   ocrWorker = new Worker(url);
-  URL.revokeObjectURL(url); // URL no longer needed after worker starts
+  URL.revokeObjectURL(url);
 
   ocrWorker.onmessage = (e) => {
     const msg = e.data;
     if (msg.type === 'ready') {
       ocrWorkerReady = true;
-      dbg('ok', 'OCR Worker ready');
+      dbg('ok', 'OCR Worker ready — Tesseract will run off main thread');
     } else if (msg.type === 'log') {
       dbg(msg.level || 'info', '[Worker] ' + msg.msg);
     } else if (msg.type === 'progress') {
       dbg('ocr', `[Worker] ${msg.status} ${msg.pct}%`);
     } else if (msg.type === 'done') {
       const r = ocrPendingResolvers[msg.jobId];
-      if (r) { r.resolve({ text: msg.text, method: msg.method }); delete ocrPendingResolvers[msg.jobId]; }
+      if (r) { r.resolve(msg.text); delete ocrPendingResolvers[msg.jobId]; }
     } else if (msg.type === 'error') {
       const r = ocrPendingResolvers[msg.jobId];
       if (r) { r.reject(new Error(msg.msg)); delete ocrPendingResolvers[msg.jobId]; }
@@ -816,41 +770,89 @@ function initOcrWorker() {
   };
 
   ocrWorker.onerror = (e) => {
-    dbg('err', 'OCR Worker error', e.message);
-    // Reject all pending
-    Object.values(ocrPendingResolvers).forEach(r => r.reject(new Error('Worker crashed: ' + e.message)));
+    dbg('err', 'OCR Worker crashed', e.message);
+    Object.values(ocrPendingResolvers).forEach(r => r.reject(new Error('Worker crashed')));
     ocrPendingResolvers = {};
     ocrWorker = null; ocrWorkerReady = false;
   };
 }
 
-function pdfToTextViaWorker(file) {
-  return new Promise(async (resolve, reject) => {
+function runOcrOnBitmap(bitmap, jobId) {
+  return new Promise((resolve, reject) => {
+    ocrPendingResolvers[jobId] = { resolve, reject };
+    // Transfer bitmap ownership to worker (zero-copy)
+    ocrWorker.postMessage({ type: 'ocr', jobId, bitmap }, [bitmap]);
+  });
+}
+
+// ── PDF → TEXT ───────────────────────────────────────────
+// PDF rendering stays on main thread (needs document/canvas).
+// Only the heavy Tesseract CPU work goes to the Worker.
+async function pdfToText(file) {
+  dbg('info', `pdfToText: ${file.name} (${(file.size/1024).toFixed(1)}KB)`);
+
+  const buf = await file.arrayBuffer();
+
+  // Step 1: try embedded text (instant, no OCR needed)
+  try {
+    const pdf = await pdfjsLib.getDocument({ data: buf.slice(0) }).promise;
+    let fullTxt = '';
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const pg = await pdf.getPage(i);
+      const c = await pg.getTextContent();
+      fullTxt += c.items.map(s => s.str).join(' ') + '\n';
+    }
+    const cleaned = fullTxt.replace(/\s+/g, ' ').trim();
+    if (cleaned.length > 60) {
+      dbg('ok', `Embedded text: ${cleaned.length} chars — no OCR needed`);
+      return { text: cleaned, method: 'embedded' };
+    }
+    dbg('warn', `Embedded text too short (${cleaned.length}) → OCR`);
+  } catch(e) {
+    dbg('warn', 'Embedded text error', e.message);
+  }
+
+  // Step 2: render PDF page to ImageBitmap on main thread, send to Worker for OCR
+  dbg('ocr', `Rendering PDF for OCR: ${file.name}`);
+  try {
+    const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+    const page = await pdf.getPage(1);
+    const scale = 2.5;
+    const vp = page.getViewport({ scale });
+
+    // Render to a regular canvas on the main thread
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(vp.width);
+    canvas.height = Math.round(vp.height);
+    const ctx = canvas.getContext('2d');
+    await page.render({ canvasContext: ctx, viewport: vp }).promise;
+    dbg('ocr', `Page rendered: ${canvas.width}x${canvas.height}px`);
+
+    // Convert to ImageBitmap — transferable to Worker
+    const bitmap = await createImageBitmap(canvas);
+
+    // Wait for worker ready (max 30s)
     if (!ocrWorker) initOcrWorker();
-    // Wait for worker to be ready (max 30s)
     let waited = 0;
     while (!ocrWorkerReady && waited < 30000) {
       await new Promise(r => setTimeout(r, 100));
       waited += 100;
     }
-    if (!ocrWorkerReady) { reject(new Error('OCR Worker not ready after 30s')); return; }
+    if (!ocrWorkerReady) throw new Error('OCR Worker not ready after 30s');
 
     const jobId = ++ocrJobCounter;
-    ocrPendingResolvers[jobId] = { resolve, reject };
-    // Transfer the ArrayBuffer to the worker (zero-copy)
-    const arrayBuffer = await file.arrayBuffer();
-    dbg('info', `Sending job ${jobId} to worker: ${file.name}`);
-    ocrWorker.postMessage({ type: 'process', jobId, arrayBuffer, filename: file.name }, [arrayBuffer]);
-  });
-}
+    dbg('info', `Sending bitmap job ${jobId} to worker`);
+    const text = await runOcrOnBitmap(bitmap, jobId);
 
-// ── PDF → TEXT (uses Worker) ─────────────────────────────
-async function pdfToText(file) {
-  dbg('info', `pdfToText: ${file.name} (${(file.size/1024).toFixed(1)}KB)`);
-  try {
-    return await pdfToTextViaWorker(file);
+    if (!text || text.trim().length < 10)
+      throw new Error(`OCR returned empty (${text?.length || 0} chars)`);
+
+    dbg('ok', `OCR done: ${text.length} chars`);
+    dbg('data', 'OCR sample', text.slice(0, 200));
+    return { text, method: 'ocr' };
+
   } catch(e) {
-    dbg('err', 'Worker processing failed', e.message);
+    dbg('err', 'OCR failed', e.message);
     throw e;
   }
 }
