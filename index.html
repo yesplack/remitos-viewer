@@ -262,6 +262,8 @@ body{font-family:'Inter','Segoe UI',sans-serif;background:var(--bg);color:var(--
 .cnf-m{font-size:13px;color:var(--tx2);margin-bottom:22px;line-height:1.6}
 .cnf-btns{display:flex;gap:10px;justify-content:flex-end}
 
+.exp-layout{display:grid;grid-template-columns:320px 1fr;gap:20px;align-items:start}
+@media(max-width:900px){.exp-layout{grid-template-columns:1fr}}
 @media(max-width:768px){.hdr{padding:0 14px}.main{padding:16px 14px}.hdr-c,.stat-pill{display:none}.grid{grid-template-columns:1fr}.adm-grid{grid-template-columns:1fr}.perm-grid{grid-template-columns:1fr}}
 </style>
 </head>
@@ -291,6 +293,7 @@ body{font-family:'Inter','Segoe UI',sans-serif;background:var(--bg);color:var(--
   </div>
   <div class="hdr-c">
     <button class="nav-btn active" data-page="remitos" onclick="go('remitos')">📄 Remitos</button>
+    <button class="nav-btn" data-page="exportar" onclick="go('exportar')" id="nav-exportar" style="display:none">📦 Exportar</button>
     <button class="nav-btn" data-page="admin" onclick="go('admin')" id="nav-admin" style="display:none">⚙️ Administración</button>
   </div>
   <div class="hdr-r">
@@ -369,6 +372,147 @@ body{font-family:'Inter','Segoe UI',sans-serif;background:var(--bg);color:var(--
         <div class="p-card">
           <div class="p-hd"><div class="p-title">🕐 Últimos importados</div></div>
           <div class="p-bd" id="activity-bd"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EXPORTAR -->
+  <div class="page" id="page-exportar">
+    <div class="main">
+      <div class="hero-lbl">Exportar remitos en ZIP</div>
+      <div class="exp-layout">
+
+        <!-- FILTROS -->
+        <div class="p-card">
+          <div class="p-hd"><div class="p-title">🔍 Filtros de selección</div></div>
+          <div class="p-bd" style="display:flex;flex-direction:column;gap:16px">
+
+            <!-- Rango de fechas -->
+            <div>
+              <div class="fl" style="margin-bottom:8px">Rango de fechas</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                <div>
+                  <label class="fl" style="font-size:10px">Desde</label>
+                  <input type="date" class="fi" id="exp-fecha-desde" style="padding:9px 12px;font-size:13px">
+                </div>
+                <div>
+                  <label class="fl" style="font-size:10px">Hasta</label>
+                  <input type="date" class="fi" id="exp-fecha-hasta" style="padding:9px 12px;font-size:13px">
+                </div>
+              </div>
+            </div>
+
+            <!-- Cliente -->
+            <div>
+              <label class="fl">Cliente (contiene)</label>
+              <input type="text" class="fi" id="exp-cliente" placeholder="Ej: GARCIA, LAFFUE…" style="padding:9px 12px;font-size:13px" oninput="updateExpPreview()">
+            </div>
+
+            <!-- Tipo -->
+            <div>
+              <label class="fl">Tipo de remito</label>
+              <select class="fsel" id="exp-tipo" onchange="updateExpPreview()" style="padding:9px 12px;font-size:13px">
+                <option value="todos">Todos</option>
+                <option value="oficial">Solo Oficiales</option>
+                <option value="proforma">Solo Proformas</option>
+              </select>
+            </div>
+
+            <!-- Origen -->
+            <div>
+              <label class="fl">Origen</label>
+              <select class="fsel" id="exp-origen" onchange="updateExpPreview()" style="padding:9px 12px;font-size:13px">
+                <option value="todos">Todos</option>
+                <option value="pedido">Pedido de Venta</option>
+                <option value="contado_a">Venta Contado "A"</option>
+                <option value="contado_b">Venta Contado "B"</option>
+              </select>
+            </div>
+
+            <!-- Vendedor -->
+            <div>
+              <label class="fl">Vendedor</label>
+              <select class="fsel" id="exp-vendedor" onchange="updateExpPreview()" style="padding:9px 12px;font-size:13px">
+                <option value="todos">Todos los vendedores</option>
+              </select>
+            </div>
+
+            <!-- Punto de venta -->
+            <div>
+              <label class="fl">Punto de venta</label>
+              <select class="fsel" id="exp-pv" onchange="updateExpPreview()" style="padding:9px 12px;font-size:13px">
+                <option value="todos">Todos</option>
+              </select>
+            </div>
+
+            <button class="btn-sm" style="width:100%;justify-content:center;height:36px;font-size:13px" onclick="updateExpPreview()">
+              🔄 Actualizar previsualización
+            </button>
+
+          </div>
+        </div>
+
+        <!-- PREVIEW + DESCARGA -->
+        <div style="display:flex;flex-direction:column;gap:16px">
+
+          <!-- RESUMEN -->
+          <div class="p-card">
+            <div class="p-hd"><div class="p-title">📊 Selección actual</div></div>
+            <div class="p-bd">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+                <div style="background:var(--sf2);border-radius:var(--r);padding:12px 16px;text-align:center">
+                  <div style="font-size:28px;font-weight:700" id="exp-count">0</div>
+                  <div style="font-size:11px;color:var(--tx3);margin-top:2px">remitos</div>
+                </div>
+                <div style="background:var(--sf2);border-radius:var(--r);padding:12px 16px;text-align:center">
+                  <div style="font-size:28px;font-weight:700" id="exp-size">0 MB</div>
+                  <div style="font-size:11px;color:var(--tx3);margin-top:2px">aprox. ZIP</div>
+                </div>
+              </div>
+              <div id="exp-breakdown" style="font-size:12px;color:var(--tx2);line-height:1.8"></div>
+            </div>
+          </div>
+
+          <!-- NOMBRE DEL ZIP -->
+          <div class="p-card">
+            <div class="p-hd"><div class="p-title">📁 Nombre del archivo</div></div>
+            <div class="p-bd">
+              <input type="text" class="fi" id="exp-zipname" value="remitos-export"
+                style="padding:9px 12px;font-size:13px;margin-bottom:4px">
+              <div style="font-size:11px;color:var(--tx3)">.zip se agrega automáticamente</div>
+            </div>
+          </div>
+
+          <!-- BOTÓN DESCARGA -->
+          <button class="btn-imp" id="btn-exp-download" onclick="startExport()"
+            style="width:100%;justify-content:center;height:48px;font-size:14px;border-radius:var(--rl)">
+            ⬇ Descargar ZIP
+          </button>
+
+          <!-- PROGRESO EXPORT -->
+          <div id="exp-prog-wrap" style="display:none">
+            <div style="background:var(--sf2);border-radius:var(--rl);padding:16px 20px">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+                <span style="font-size:13px;font-weight:600" id="exp-prog-label">Preparando…</span>
+                <span style="font-size:12px;color:var(--tx3)" id="exp-prog-pct">0%</span>
+              </div>
+              <div style="height:6px;background:var(--sf3);border-radius:3px;overflow:hidden">
+                <div id="exp-prog-bar" style="height:100%;background:var(--ac);border-radius:3px;transition:width .3s ease;width:0"></div>
+              </div>
+              <div style="font-size:11px;color:var(--tx3);margin-top:8px" id="exp-prog-sub"></div>
+            </div>
+          </div>
+
+          <!-- LISTA PREVIEW -->
+          <div class="p-card">
+            <div class="p-hd">
+              <div class="p-title">📋 Remitos incluidos</div>
+              <span style="font-size:11px;color:var(--tx3)" id="exp-list-count"></span>
+            </div>
+            <div style="max-height:320px;overflow-y:auto" id="exp-list"></div>
+          </div>
+
         </div>
       </div>
     </div>
@@ -892,6 +1036,7 @@ function initApp(){
   document.getElementById('u-rl').textContent=CU.rol.charAt(0).toUpperCase()+CU.rol.slice(1);
   if(can('importar'))document.getElementById('btn-imp').style.display='flex';
   if(can('panel_admin'))document.getElementById('nav-admin').style.display='flex';
+  if(can('ver_remitos'))document.getElementById('nav-exportar').style.display='flex';
   if(can('debug'))document.getElementById('dbg-btn').style.display='flex';
   dbg('info','App init',{rol:CU.rol,perms:CU.permisos});
   loadRemitos();
@@ -907,6 +1052,7 @@ function go(page){
   document.querySelector(`[data-page="${page}"]`)?.classList.add('active');
   dbg('info','Navigate',page);
   if(page==='admin'){loadUsers();renderAdminStats();}
+  if(page==='exportar'){initExportPage();}
 }
 
 // ── LOAD REMITOS ──────────────────────────────────────────
@@ -1485,6 +1631,10 @@ document.querySelectorAll('.chip[data-origen]').forEach(c=>{
 });
 document.getElementById('vb-g').onclick=()=>{gridV=true;document.getElementById('grid').classList.remove('lv');document.getElementById('vb-g').classList.add('active');document.getElementById('vb-l').classList.remove('active');};
 document.getElementById('vb-l').onclick=()=>{gridV=false;document.getElementById('grid').classList.add('lv');document.getElementById('vb-l').classList.add('active');document.getElementById('vb-g').classList.remove('active');};
+// Export date pickers
+['exp-fecha-desde','exp-fecha-hasta'].forEach(id=>{
+  document.getElementById(id)?.addEventListener('change',updateExpPreview);
+});
 
 const dz=document.getElementById('imp-dropzone'),fi=document.getElementById('file-input');
 dz.onclick=()=>fi.click();
@@ -1509,7 +1659,175 @@ document.addEventListener('keydown',e=>{
   if((e.ctrlKey||e.metaKey)&&e.key==='k'){e.preventDefault();document.getElementById('srch')?.focus();}
 });
 
-// ── BOOT ──────────────────────────────────────────────────
+// ── EXPORT / ZIP ──────────────────────────────────────────
+let expFiltered=[];
+
+function initExportPage(){
+  // Populate vendedor dropdown
+  const vends=[...new Set(allR.map(r=>r.vendedor).filter(Boolean))].sort();
+  const vsel=document.getElementById('exp-vendedor');
+  if(vsel){
+    vsel.innerHTML='<option value="todos">Todos los vendedores</option>';
+    vends.forEach(v=>{ const o=document.createElement('option'); o.value=v; o.textContent=v; vsel.appendChild(o); });
+  }
+  // Populate punto de venta dropdown
+  const pvs=[...new Set(allR.map(r=>r.numero?.split('-')[0]).filter(Boolean))].sort();
+  const pvsel=document.getElementById('exp-pv');
+  if(pvsel){
+    pvsel.innerHTML='<option value="todos">Todos</option>';
+    pvs.forEach(p=>{ const o=document.createElement('option'); o.value=p; o.textContent=p; pvsel.appendChild(o); });
+  }
+  // Default dates: first and last remito dates
+  const dates=allR.map(r=>r.fecha).filter(Boolean).sort();
+  if(dates.length){
+    const fd=document.getElementById('exp-fecha-desde');
+    const fh=document.getElementById('exp-fecha-hasta');
+    if(fd&&!fd.value) fd.value=dates[0];
+    if(fh&&!fh.value) fh.value=dates[dates.length-1];
+  }
+  updateExpPreview();
+}
+
+function getExpFiltered(){
+  const desde=document.getElementById('exp-fecha-desde')?.value;
+  const hasta=document.getElementById('exp-fecha-hasta')?.value;
+  const cliente=document.getElementById('exp-cliente')?.value.trim().toLowerCase();
+  const tipo=document.getElementById('exp-tipo')?.value||'todos';
+  const origen=document.getElementById('exp-origen')?.value||'todos';
+  const vend=document.getElementById('exp-vendedor')?.value||'todos';
+  const pv=document.getElementById('exp-pv')?.value||'todos';
+
+  return allR.filter(r=>{
+    if(desde&&r.fecha&&r.fecha<desde) return false;
+    if(hasta&&r.fecha&&r.fecha>hasta) return false;
+    if(cliente&&!(r.cliente||'').toLowerCase().includes(cliente)) return false;
+    if(tipo!=='todos'&&getTipo(r.numero).toLowerCase()!==tipo) return false;
+    if(origen!=='todos'){
+      const ot=(r.origen_tipo||'').toLowerCase();
+      if(origen==='pedido'&&!ot.includes('pedido')) return false;
+      if(origen==='contado_a'&&!ot.includes('"a"')) return false;
+      if(origen==='contado_b'&&!ot.includes('"b"')) return false;
+    }
+    if(vend!=='todos'&&r.vendedor!==vend) return false;
+    if(pv!=='todos'&&r.numero?.split('-')[0]!==pv) return false;
+    return true;
+  });
+}
+
+function updateExpPreview(){
+  expFiltered=getExpFiltered();
+  const count=expFiltered.length;
+  const sizeMB=(expFiltered.reduce((a,r)=>a+110,0)/1024).toFixed(1); // ~110KB avg per PDF
+
+  document.getElementById('exp-count').textContent=count;
+  document.getElementById('exp-size').textContent=sizeMB+' MB';
+  document.getElementById('exp-list-count').textContent=count+' archivos';
+
+  // Breakdown
+  const of=expFiltered.filter(r=>getTipo(r.numero)==='Oficial').length;
+  const pf=expFiltered.filter(r=>getTipo(r.numero)==='Proforma').length;
+  const vends={};
+  expFiltered.forEach(r=>{ if(r.vendedor) vends[r.vendedor]=(vends[r.vendedor]||0)+1; });
+  const vendStr=Object.entries(vends).sort((a,b)=>b[1]-a[1]).slice(0,5)
+    .map(([v,n])=>`${v} (${n})`).join(' · ');
+  document.getElementById('exp-breakdown').innerHTML=
+    `<div>Oficiales: <strong>${of}</strong> · Proformas: <strong>${pf}</strong></div>`+
+    (vendStr?`<div style="margin-top:4px;color:var(--tx3)">Vendedores: ${vendStr}</div>`:'');
+
+  // Render list
+  const list=document.getElementById('exp-list');
+  if(!list) return;
+  if(!count){
+    list.innerHTML='<div style="padding:20px;text-align:center;color:var(--tx3);font-size:13px">Sin remitos con estos filtros</div>';
+    document.getElementById('btn-exp-download').disabled=true;
+    return;
+  }
+  document.getElementById('btn-exp-download').disabled=false;
+  list.innerHTML=expFiltered.slice(0,50).map(r=>`
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 18px;border-bottom:1px solid var(--bd);font-size:12px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span class="c-tipo t-${getTipo(r.numero).toLowerCase()}" style="font-size:9px;padding:2px 6px">${getTipo(r.numero)}</span>
+        <span style="font-weight:600">${r.numero}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:14px;color:var(--tx2)">
+        <span style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.cliente||'—'}</span>
+        <span style="color:var(--tx3)">${r.fecha?fmtF(r.fecha):'—'}</span>
+      </div>
+    </div>`).join('')+
+    (count>50?`<div style="padding:10px 18px;font-size:11px;color:var(--tx3)">… y ${count-50} más</div>`:'');
+}
+
+async function startExport(){
+  if(!expFiltered.length){toast('Sin remitos para exportar','warn');return;}
+  const btn=document.getElementById('btn-exp-download');
+  btn.disabled=true;
+  const zipname=(document.getElementById('exp-zipname')?.value.trim()||'remitos-export')+'.zip';
+
+  // Load JSZip
+  dbg('info','Loading JSZip…');
+  await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');
+  dbg('ok','JSZip loaded');
+
+  const wrap=document.getElementById('exp-prog-wrap');
+  const bar=document.getElementById('exp-prog-bar');
+  const lbl=document.getElementById('exp-prog-label');
+  const pct=document.getElementById('exp-prog-pct');
+  const sub=document.getElementById('exp-prog-sub');
+  wrap.style.display='block';
+
+  const zip=new JSZip();
+  let done=0,errs=0;
+
+  for(const r of expFiltered){
+    lbl.textContent=`Descargando ${r.numero}…`;
+    sub.textContent=`${done+1} de ${expFiltered.length} · ${errs} errores`;
+    const p=Math.round((done/expFiltered.length)*100);
+    bar.style.width=p+'%'; pct.textContent=p+'%';
+    dbg('info',`Fetching PDF: ${r.numero}`,r.pdf_url);
+
+    try{
+      const resp=await fetch(r.pdf_url);
+      if(!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const blob=await resp.blob();
+      // Filename: NUMERO_CLIENTE.pdf
+      const safeName=(r.numero||'sin-numero')+'_'+(r.cliente||'').replace(/[^a-zA-Z0-9]/g,'_').slice(0,30)+'.pdf';
+      zip.file(safeName, blob);
+      dbg('ok',`Added to ZIP: ${safeName}`);
+    }catch(e){
+      dbg('err',`Failed to fetch ${r.numero}`,e.message);
+      errs++;
+    }
+    done++;
+  }
+
+  bar.style.width='95%'; lbl.textContent='Generando ZIP…'; pct.textContent='95%';
+  dbg('info','Generating ZIP blob…');
+
+  const zipBlob=await zip.generateAsync({
+    type:'blob',
+    compression:'DEFLATE',
+    compressionOptions:{level:6},
+    streamFiles:true
+  }, meta=>{
+    const p=95+Math.round(meta.percent/20); // 95→100
+    bar.style.width=Math.min(p,99)+'%';
+    pct.textContent=Math.min(p,99)+'%';
+  });
+
+  bar.style.width='100%'; bar.style.background='var(--gr2)';
+  lbl.textContent=`ZIP listo — ${done-errs} remitos`; pct.textContent='100%';
+  sub.textContent=errs?`${errs} archivos no se pudieron descargar`:'Todos los PDFs incluidos';
+  dbg('ok',`ZIP generated: ${(zipBlob.size/1024/1024).toFixed(2)}MB`);
+
+  // Trigger download
+  const url=URL.createObjectURL(zipBlob);
+  const a=document.createElement('a');
+  a.href=url; a.download=zipname; a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),5000);
+
+  toast(`ZIP descargado: ${done-errs} remitos`,'success');
+  btn.disabled=false;
+}
 (function(){
   dbg('info','Boot',window.location.href);
   const s=sessionStorage.getItem('ru');
