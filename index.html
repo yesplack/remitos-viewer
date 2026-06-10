@@ -666,13 +666,15 @@ const BKT = 'remitos-pdf';
 let CU=null, allR=[], allU=[], filt='todos', origenFilt='todos', gridV=true;
 let pendFiles=[], editUID=null, cnfCb=null, dbgOpen=false, dbgN=0;
 let srchTimer=null;
-let tesseractReady=false, tesseractWorker=null;
-// Try multiple Tesseract CDN versions for resilience
-const TESS_CDNS=[
-  'https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.0.4/tesseract.min.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.1/tesseract.min.js',
-  'https://unpkg.com/tesseract.js@5/dist/tesseract.min.js',
-];
+// loadScript — used for JSZip lazy loading
+function loadScript(src) {
+  return new Promise((res,rej)=>{
+    if(document.querySelector(`script[src="${src}"]`)){res();return;}
+    const s=document.createElement('script');
+    s.src=src; s.onload=res; s.onerror=()=>rej(new Error(`Failed to load: ${src}`));
+    document.head.appendChild(s);
+  });
+}
 
 // ── DEBUG ───────────────────────────────────────────────
 function dbg(type, msg, data) {
@@ -695,152 +697,160 @@ function eh(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').repla
 function clearDbg(){document.getElementById('dbg-log').innerHTML='';dbgN=0;document.getElementById('dbg-cnt').textContent='0 entradas';}
 function toggleDbg(){dbgOpen=!dbgOpen;document.getElementById('dbg-con').classList.toggle('open',dbgOpen);document.getElementById('dbg-btn').classList.toggle('on',dbgOpen);}
 
-// ── SCRIPT LOADER ────────────────────────────────────────
-function loadScript(src) {
-  return new Promise((res,rej)=>{
-    if(document.querySelector(`script[src="${src}"]`)){res();return;}
-    const s=document.createElement('script');
-    s.src=src; s.onload=res; s.onerror=()=>rej(new Error(`Failed to load: ${src}`));
-    document.head.appendChild(s);
+// ── OCR WEB WORKER (runs off main thread — immune to tab throttling) ────────
+// The worker code is embedded as a Blob so no separate file is needed.
+// It loads Tesseract inside the worker, renders the PDF page via OffscreenCanvas,
+// and posts back the extracted text. The main thread stays free.
+
+let ocrWorker = null;
+let ocrWorkerReady = false;
+let ocrPendingResolvers = {}; // jobId → {resolve, reject}
+let ocrJobCounter = 0;
+
+const OCR_WORKER_CODE = `
+importScripts(
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.0.4/tesseract.min.js'
+);
+
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+let tessWorker = null;
+
+async function initTess() {
+  if (tessWorker) return;
+  postMessage({ type: 'log', level: 'ocr', msg: 'Initializing Tesseract inside worker…' });
+  try {
+    tessWorker = await Tesseract.createWorker('spa', 1, {
+      logger: m => {
+        if (m.status && m.progress)
+          postMessage({ type: 'progress', status: m.status, pct: Math.round(m.progress * 100) });
+      }
+    });
+    postMessage({ type: 'log', level: 'ok', msg: 'Tesseract ready inside worker' });
+  } catch(e) {
+    postMessage({ type: 'log', level: 'warn', msg: 'spa failed, trying eng: ' + e.message });
+    tessWorker = await Tesseract.createWorker('eng', 1);
+  }
+}
+
+async function processFile(jobId, arrayBuffer, filename) {
+  postMessage({ type: 'log', level: 'info', msg: 'Worker processing: ' + filename });
+
+  // Step 1: try embedded text
+  try {
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    let fullTxt = '';
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const pg = await pdf.getPage(i);
+      const c = await pg.getTextContent();
+      fullTxt += c.items.map(s => s.str).join(' ') + '\\n';
+    }
+    const cleaned = fullTxt.replace(/\\s+/g, ' ').trim();
+    if (cleaned.length > 60) {
+      postMessage({ type: 'log', level: 'ok', msg: 'Embedded text: ' + cleaned.length + ' chars' });
+      postMessage({ type: 'done', jobId, text: cleaned, method: 'embedded' });
+      return;
+    }
+    postMessage({ type: 'log', level: 'warn', msg: 'Embedded text too short (' + cleaned.length + ') → OCR' });
+  } catch(e) {
+    postMessage({ type: 'log', level: 'warn', msg: 'Embedded text error: ' + e.message });
+  }
+
+  // Step 2: render PDF → OffscreenCanvas → OCR
+  try {
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    const page = await pdf.getPage(1);
+    const scale = 2.5;
+    const vp = page.getViewport({ scale });
+    const canvas = new OffscreenCanvas(vp.width, vp.height);
+    const ctx = canvas.getContext('2d');
+    await page.render({ canvasContext: ctx, viewport: vp }).promise;
+    postMessage({ type: 'log', level: 'ocr', msg: 'Canvas rendered: ' + Math.round(vp.width) + 'x' + Math.round(vp.height) });
+
+    await initTess();
+    const { data: { text } } = await tessWorker.recognize(canvas);
+    if (!text || text.trim().length < 10) throw new Error('OCR returned empty text');
+    postMessage({ type: 'log', level: 'ok', msg: 'OCR done: ' + text.length + ' chars' });
+    postMessage({ type: 'done', jobId, text, method: 'ocr' });
+  } catch(e) {
+    postMessage({ type: 'error', jobId, msg: e.message });
+  }
+}
+
+self.onmessage = async (e) => {
+  const { type, jobId, arrayBuffer, filename } = e.data;
+  if (type === 'process') {
+    await processFile(jobId, arrayBuffer, filename);
+  }
+};
+
+postMessage({ type: 'ready' });
+`;
+
+function initOcrWorker() {
+  if (ocrWorker) return;
+  dbg('ocr', 'Creating OCR Web Worker (off-thread)…');
+  const blob = new Blob([OCR_WORKER_CODE], { type: 'application/javascript' });
+  const url = URL.createObjectURL(blob);
+  ocrWorker = new Worker(url);
+  URL.revokeObjectURL(url); // URL no longer needed after worker starts
+
+  ocrWorker.onmessage = (e) => {
+    const msg = e.data;
+    if (msg.type === 'ready') {
+      ocrWorkerReady = true;
+      dbg('ok', 'OCR Worker ready');
+    } else if (msg.type === 'log') {
+      dbg(msg.level || 'info', '[Worker] ' + msg.msg);
+    } else if (msg.type === 'progress') {
+      dbg('ocr', `[Worker] ${msg.status} ${msg.pct}%`);
+    } else if (msg.type === 'done') {
+      const r = ocrPendingResolvers[msg.jobId];
+      if (r) { r.resolve({ text: msg.text, method: msg.method }); delete ocrPendingResolvers[msg.jobId]; }
+    } else if (msg.type === 'error') {
+      const r = ocrPendingResolvers[msg.jobId];
+      if (r) { r.reject(new Error(msg.msg)); delete ocrPendingResolvers[msg.jobId]; }
+    }
+  };
+
+  ocrWorker.onerror = (e) => {
+    dbg('err', 'OCR Worker error', e.message);
+    // Reject all pending
+    Object.values(ocrPendingResolvers).forEach(r => r.reject(new Error('Worker crashed: ' + e.message)));
+    ocrPendingResolvers = {};
+    ocrWorker = null; ocrWorkerReady = false;
+  };
+}
+
+function pdfToTextViaWorker(file) {
+  return new Promise(async (resolve, reject) => {
+    if (!ocrWorker) initOcrWorker();
+    // Wait for worker to be ready (max 30s)
+    let waited = 0;
+    while (!ocrWorkerReady && waited < 30000) {
+      await new Promise(r => setTimeout(r, 100));
+      waited += 100;
+    }
+    if (!ocrWorkerReady) { reject(new Error('OCR Worker not ready after 30s')); return; }
+
+    const jobId = ++ocrJobCounter;
+    ocrPendingResolvers[jobId] = { resolve, reject };
+    // Transfer the ArrayBuffer to the worker (zero-copy)
+    const arrayBuffer = await file.arrayBuffer();
+    dbg('info', `Sending job ${jobId} to worker: ${file.name}`);
+    ocrWorker.postMessage({ type: 'process', jobId, arrayBuffer, filename: file.name }, [arrayBuffer]);
   });
 }
 
-async function loadTesseractScript() {
-  for(const cdn of TESS_CDNS){
-    try{
-      dbg('ocr',`Trying CDN: ${cdn}`);
-      await loadScript(cdn);
-      if(typeof Tesseract !== 'undefined'){
-        dbg('ok',`Tesseract loaded from: ${cdn}`);
-        return;
-      }
-    }catch(e){dbg('warn',`CDN failed: ${cdn}`,e.message);}
-  }
-  throw new Error('Could not load Tesseract.js from any CDN');
-}
-
-// ── TESSERACT INIT ───────────────────────────────────────
-async function initTesseract() {
-  if(tesseractReady && tesseractWorker) return tesseractWorker;
-  dbg('ocr','Initializing Tesseract…');
-  try {
-    await loadTesseractScript();
-
-    // Detect API version and use correct call
-    // v5: createWorker(lang, oem, options)
-    // v4: createWorker(lang, oem, options)  — same signature but different lang data URLs
-    // Both: worker is ready after createWorker, no separate loadLanguage needed
-    dbg('ocr',`Tesseract version: ${Tesseract.version || 'unknown'}`);
-
-    const logFn = m => {
-      if(m.status && m.progress){
-        dbg('ocr',`${m.status} ${Math.round(m.progress*100)}%`);
-      }
-    };
-
-    // Try v4/v5 API first
-    try {
-      tesseractWorker = await Tesseract.createWorker('spa', 1, { logger: logFn });
-      dbg('ok','Worker created with spa language');
-    } catch(e1) {
-      dbg('warn','spa lang failed, trying eng',e1.message);
-      try {
-        tesseractWorker = await Tesseract.createWorker('eng', 1, { logger: logFn });
-        dbg('ok','Worker created with eng language');
-      } catch(e2) {
-        // v2 API fallback: createWorker() then loadLanguage/initialize
-        dbg('warn','Trying v2 API',e2.message);
-        tesseractWorker = await Tesseract.createWorker({ logger: logFn });
-        await tesseractWorker.loadLanguage('spa+eng');
-        await tesseractWorker.initialize('spa+eng');
-        dbg('ok','Worker created via v2 API');
-      }
-    }
-
-    tesseractReady=true;
-    dbg('ok','Tesseract ready ✓');
-    return tesseractWorker;
-  } catch(e) {
-    dbg('err','Tesseract init failed',e.message);
-    tesseractWorker=null; tesseractReady=false;
-    throw e;
-  }
-}
-
-// ── PDF → IMAGE → OCR ───────────────────────────────────
-async function renderPdfToCanvas(file) {
-  const buf = await file.arrayBuffer();
-  const pdf = await pdfjsLib.getDocument({data:buf}).promise;
-  dbg('data',`PDF pages: ${pdf.numPages}`);
-  const page = await pdf.getPage(1);
-  // 2.5x scale = higher resolution = better OCR accuracy
-  const scale = 2.5;
-  const vp = page.getViewport({scale});
-  const canvas = document.createElement('canvas');
-  canvas.width = vp.width;
-  canvas.height = vp.height;
-  const ctx = canvas.getContext('2d');
-  await page.render({canvasContext:ctx, viewport:vp}).promise;
-  dbg('ocr',`Canvas: ${vp.width}x${vp.height}px @ ${scale}x`);
-  return {canvas, pdf};
-}
-
+// ── PDF → TEXT (uses Worker) ─────────────────────────────
 async function pdfToText(file) {
-  dbg('info',`Processing: ${file.name} (${(file.size/1024).toFixed(1)}KB)`);
-
-  // STEP 1: Try embedded text (fast path — works for PDFs with text layer)
+  dbg('info', `pdfToText: ${file.name} (${(file.size/1024).toFixed(1)}KB)`);
   try {
-    const buf = await file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({data:buf}).promise;
-    let fullTxt = '';
-    for(let i=1; i<=pdf.numPages; i++){
-      const pg = await pdf.getPage(i);
-      const c = await pg.getTextContent();
-      fullTxt += c.items.map(s=>s.str).join(' ') + '\n';
-    }
-    const cleaned = fullTxt.replace(/\s+/g,' ').trim();
-    if(cleaned.length > 60){
-      dbg('ok',`Embedded text: ${cleaned.length} chars — OCR skipped`);
-      dbg('data','Text sample',cleaned.slice(0,250));
-      return {text:cleaned, method:'embedded'};
-    }
-    dbg('warn',`Embedded text too short (${cleaned.length} chars) → OCR`);
+    return await pdfToTextViaWorker(file);
   } catch(e) {
-    dbg('warn','Embedded text error',e.message);
-  }
-
-  // STEP 2: OCR via Tesseract.js
-  dbg('ocr',`Starting OCR: ${file.name}`);
-  try {
-    const {canvas} = await renderPdfToCanvas(file);
-
-    // Try one-shot API first (simplest, works in v4+v5)
-    let ocrText = '';
-    try {
-      dbg('ocr','Trying Tesseract.recognize() one-shot API…');
-      const result = await Tesseract.recognize(canvas, 'spa+eng', {
-        logger: m => { if(m.progress) dbg('ocr',`${m.status||'ocr'} ${Math.round(m.progress*100)}%`); }
-      });
-      ocrText = result.data.text;
-      dbg('ok',`One-shot OCR complete: ${ocrText.length} chars`);
-    } catch(e1) {
-      dbg('warn','One-shot failed, trying worker API',e1.message);
-      // Worker API fallback
-      const worker = await initTesseract();
-      const result = await worker.recognize(canvas);
-      ocrText = result.data.text;
-      dbg('ok',`Worker OCR complete: ${ocrText.length} chars`);
-    }
-
-    if(!ocrText || ocrText.trim().length < 10){
-      throw new Error(`OCR returned empty text (${ocrText?.length||0} chars)`);
-    }
-
-    dbg('data','OCR sample',ocrText.slice(0,300));
-    return {text:ocrText, method:'ocr'};
-
-  } catch(e) {
-    dbg('err','OCR failed',e.message);
+    dbg('err', 'Worker processing failed', e.message);
     throw e;
   }
 }
@@ -1051,8 +1061,8 @@ function initApp(){
   dbg('info','App init',{rol:CU.rol,perms:CU.permisos});
   loadRemitos();
   if(can('panel_admin'))loadUsers();
-  // Pre-load Tesseract in background if importer permission
-  if(can('importar'))setTimeout(()=>initTesseract().catch(()=>{}),2000);
+  // Pre-start the OCR Web Worker in background so it's ready when import starts
+  if(can('importar')) setTimeout(()=>initOcrWorker(), 1000);
 }
 
 function go(page){
