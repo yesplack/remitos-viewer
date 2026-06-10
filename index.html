@@ -178,7 +178,7 @@ body{font-family:'Inter','Segoe UI',sans-serif;background:var(--bg);color:var(--
 .man-in{background:var(--sf3);border:1px solid var(--bd);border-radius:6px;padding:4px 8px;font-size:11px;color:var(--tx);width:130px;outline:none;font-family:inherit}
 .man-in:focus{border-color:var(--ac)}
 /* ── IMPORT MODAL (new compact design) ── */
-.imp-modal{background:var(--sf);border:1px solid var(--bd);border-radius:20px;width:620px;max-width:96vw;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 40px 80px rgba(0,0,0,.6);transform:scale(.95) translateY(8px);transition:transform var(--t);overflow:hidden}
+.imp-modal{background:var(--sf);border:1px solid var(--bd);border-radius:20px;width:620px;max-width:96vw;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 40px 80px rgba(0,0,0,.6);transform:scale(.95) translateY(8px);transition:transform var(--t);overflow:hidden}
 .ov.open .imp-modal{transform:scale(1) translateY(0)}
 .imp-modal-hd{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--bd);flex-shrink:0}
 .imp-modal-bar{display:flex;align-items:center;gap:10px;padding:10px 18px;border-bottom:1px solid var(--bd);flex-shrink:0}
@@ -189,7 +189,7 @@ body{font-family:'Inter','Segoe UI',sans-serif;background:var(--bg);color:var(--
 .imp-dropzone{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:40px 20px;color:var(--tx2);border:2px dashed var(--sf3);border-radius:var(--rl);margin:14px 18px;cursor:pointer;transition:var(--t)}
 .imp-dropzone:hover,.imp-dropzone.over{border-color:var(--ac);background:rgba(0,120,212,.04)}
 .imp-dropzone.hidden{display:none}
-.imp-list{flex:1;overflow-y:auto;min-height:0;padding:4px 0}
+.imp-list{flex:1;overflow-y:auto;min-height:0;padding:4px 0;scroll-behavior:smooth}
 .imp-row{display:flex;align-items:center;gap:10px;padding:7px 18px;transition:background .15s}
 .imp-row:hover{background:var(--sf2)}
 .imp-row-ico{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;transition:var(--t)}
@@ -495,12 +495,18 @@ body{font-family:'Inter','Segoe UI',sans-serif;background:var(--bg);color:var(--
             <div style="background:var(--sf2);border-radius:var(--rl);padding:16px 20px">
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
                 <span style="font-size:13px;font-weight:600" id="exp-prog-label">Preparando…</span>
-                <span style="font-size:12px;color:var(--tx3)" id="exp-prog-pct">0%</span>
+                <div style="display:flex;align-items:center;gap:10px">
+                  <span style="font-size:12px;color:var(--tx3);font-variant-numeric:tabular-nums" id="exp-elapsed" style="display:none">⏱ 0:00</span>
+                  <span style="font-size:12px;color:var(--tx3)" id="exp-prog-pct">0%</span>
+                </div>
               </div>
               <div style="height:6px;background:var(--sf3);border-radius:3px;overflow:hidden">
                 <div id="exp-prog-bar" style="height:100%;background:var(--ac);border-radius:3px;transition:width .3s ease;width:0"></div>
               </div>
-              <div style="font-size:11px;color:var(--tx3);margin-top:8px" id="exp-prog-sub"></div>
+              <div style="display:flex;justify-content:space-between;margin-top:8px">
+                <div style="font-size:11px;color:var(--tx3)" id="exp-prog-sub"></div>
+                <div style="font-size:11px;color:var(--tx3)" id="exp-eta"></div>
+              </div>
             </div>
           </div>
 
@@ -566,7 +572,7 @@ body{font-family:'Inter','Segoe UI',sans-serif;background:var(--bg);color:var(--
 
     <!-- FOOTER -->
     <div class="imp-modal-ft">
-      <div style="display:flex;gap:14px;align-items:center" id="imp-ft-stats">
+      <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap" id="imp-ft-stats">
         <span class="imp-ft-stat" id="ift-ok" style="display:none">
           <span style="color:var(--gr2)">✓</span> <span id="ift-ok-n">0</span> ok
         </span>
@@ -581,6 +587,10 @@ body{font-family:'Inter','Segoe UI',sans-serif;background:var(--bg);color:var(--
         </span>
         <span class="imp-ft-stat" id="ift-q">
           <span style="color:var(--tx3)">◷</span> <span id="ift-q-n">0</span> en cola
+        </span>
+        <span class="imp-ft-stat" id="ift-time" style="display:none;color:var(--tx3);font-variant-numeric:tabular-nums">
+          ⏱ <span id="ift-time-val">0:00</span>
+          <span id="ift-eta" style="color:var(--tx3);margin-left:4px"></span>
         </span>
       </div>
       <div style="display:flex;gap:8px">
@@ -1169,6 +1179,59 @@ async function delR(id,num){
 // ── IMPORT ────────────────────────────────────────────────
 let importPaused=false, liveOk=0, liveDu=0, liveEr=0, liveMn=0;
 let wakeLock=null;
+let impTimerStart=null, impTimerInterval=null;
+let expTimerStart=null, expTimerInterval=null;
+
+function fmtElapsed(ms){
+  const s=Math.floor(ms/1000);
+  const m=Math.floor(s/60);
+  return m>0 ? `${m}:${String(s%60).padStart(2,'0')}` : `0:${String(s).padStart(2,'0')}`;
+}
+
+function fmtETA(done,total,elapsedMs){
+  if(done===0||done>=total) return '';
+  const msPerItem=elapsedMs/done;
+  const remaining=Math.round((total-done)*msPerItem/1000);
+  if(remaining<5) return '';
+  if(remaining<60) return `· ~${remaining}s restantes`;
+  const m=Math.floor(remaining/60), s=remaining%60;
+  return `· ~${m}:${String(s).padStart(2,'0')} restantes`;
+}
+
+function startImpTimer(){
+  impTimerStart=Date.now();
+  document.getElementById('ift-time').style.display='flex';
+  impTimerInterval=setInterval(()=>{
+    const el=Date.now()-impTimerStart;
+    const done=liveOk+liveDu+liveEr;
+    document.getElementById('ift-time-val').textContent=fmtElapsed(el);
+    document.getElementById('ift-eta').textContent=fmtETA(done,pendFiles.length,el);
+  },500);
+}
+
+function stopImpTimer(){
+  clearInterval(impTimerInterval);
+  impTimerInterval=null;
+  // Show final elapsed, hide ETA
+  if(impTimerStart){
+    const el=Date.now()-impTimerStart;
+    document.getElementById('ift-time-val').textContent=fmtElapsed(el);
+    document.getElementById('ift-eta').textContent='· finalizado';
+  }
+}
+
+function startExpTimer(labelEl, subEl){
+  expTimerStart=Date.now();
+  expTimerInterval=setInterval(()=>{
+    const el=Date.now()-expTimerStart;
+    if(subEl) subEl.dataset.elapsed=fmtElapsed(el);
+  },500);
+}
+
+function stopExpTimer(){
+  clearInterval(expTimerInterval);
+  expTimerInterval=null;
+}
 
 async function acquireWakeLock(){
   try{
@@ -1200,7 +1263,7 @@ document.addEventListener('visibilitychange',()=>{
 
 function openImport(){
   if(!can('importar')){toast('Sin permisos','error');return;}
-  pendFiles=[];importPaused=false;liveOk=0;liveDu=0;liveEr=0;liveMn=0;
+  pendFiles=[];importPaused=false;liveOk=0;liveDu=0;liveEr=0;liveMn=0;visibilityWarned=false;
   document.getElementById('imp-list').innerHTML='';
   document.getElementById('imp-hd-sum').textContent='';
   document.getElementById('imp-prog-bar').style.width='0';
@@ -1210,6 +1273,10 @@ function openImport(){
   document.getElementById('btn-start-imp').onclick=startImport;
   document.getElementById('btn-pause-imp').style.display='none';
   document.getElementById('imp-dropzone').classList.remove('hidden');
+  document.getElementById('ift-time').style.display='none';
+  document.getElementById('ift-time-val').textContent='0:00';
+  document.getElementById('ift-eta').textContent='';
+  clearInterval(impTimerInterval);
   resetFtStats();
   document.getElementById('ov-imp').classList.add('open');
   dbg('info','Import modal open');
@@ -1296,7 +1363,13 @@ function setFileBar(i,pct,color){
   b.style.width=pct+'%';
   b.style.background=color||'var(--ac)';
 }
-function showFileBar(i){} // no-op, bars always visible now
+function showFileBar(i){
+  // Auto-scroll the active row into view so the browser keeps it prioritized
+  const row=document.getElementById('ir-'+i);
+  if(row){
+    row.scrollIntoView({block:'nearest',behavior:'smooth'});
+  }
+}
 
 async function startImport(){
   const btn=document.getElementById('btn-start-imp');
@@ -1306,6 +1379,7 @@ async function startImport(){
   const globalBar=document.getElementById('imp-prog-bar');
   await acquireWakeLock();
   document.getElementById('imp-tab-warn').style.display='flex';
+  startImpTimer();
 
   for(let i=0;i<pendFiles.length;i++){
     // Pause support
@@ -1319,6 +1393,7 @@ async function startImport(){
     updateFtStats();
 
     setIS(i,'ir-pr','⟳');
+    showFileBar(i); // scroll active row into view
     setFileBar(i,10,'var(--ac)');
     setIF(i,'Leyendo…','var(--tx3)');
     dbg('info',`[${i+1}/${pendFiles.length}] ${f.name}`);
@@ -1385,6 +1460,7 @@ async function startImport(){
   globalBar.style.background=liveEr>0&&liveOk===0?'var(--re2)':liveEr>0?'var(--or)':'var(--gr2)';
   document.getElementById('btn-pause-imp').style.display='none';
   document.getElementById('imp-tab-warn').style.display='none';
+  stopImpTimer();
   await releaseWakeLock();
   updateFtStats();
 
@@ -1773,7 +1849,19 @@ async function startExport(){
   const lbl=document.getElementById('exp-prog-label');
   const pct=document.getElementById('exp-prog-pct');
   const sub=document.getElementById('exp-prog-sub');
+  const eta=document.getElementById('exp-eta');
+  const elapsedEl=document.getElementById('exp-elapsed');
   wrap.style.display='block';
+  bar.style.background='var(--ac)';
+  if(elapsedEl) elapsedEl.style.display='inline';
+
+  // Start export timer
+  expTimerStart=Date.now();
+  expTimerInterval=setInterval(()=>{
+    const el=Date.now()-expTimerStart;
+    if(elapsedEl) elapsedEl.textContent='⏱ '+fmtElapsed(el);
+    if(eta&&done>0&&done<expFiltered.length) eta.textContent=fmtETA(done,expFiltered.length,el);
+  },500);
 
   const zip=new JSZip();
   let done=0,errs=0;
@@ -1817,7 +1905,11 @@ async function startExport(){
   bar.style.width='100%'; bar.style.background='var(--gr2)';
   lbl.textContent=`ZIP listo — ${done-errs} remitos`; pct.textContent='100%';
   sub.textContent=errs?`${errs} archivos no se pudieron descargar`:'Todos los PDFs incluidos';
-  dbg('ok',`ZIP generated: ${(zipBlob.size/1024/1024).toFixed(2)}MB`);
+  stopExpTimer();
+  const totalEl=Date.now()-expTimerStart;
+  if(eta) eta.textContent=`Total: ${fmtElapsed(totalEl)}`;
+  if(elapsedEl) elapsedEl.textContent='⏱ '+fmtElapsed(totalEl);
+  dbg('ok',`ZIP generated: ${(zipBlob.size/1024/1024).toFixed(2)}MB in ${fmtElapsed(totalEl)}`);
 
   // Trigger download
   const url=URL.createObjectURL(zipBlob);
